@@ -64,6 +64,7 @@ type templateData struct {
 	QRDataURI       string
 	Client          *storage.Client
 	HostMetrics     endpoint.HostMetrics
+	CascadeRuntime  endpoint.CascadeRuntimeStatus
 	ClientStatsPath string
 	EndpointAddr    string
 }
@@ -175,6 +176,8 @@ func (s *Server) Routes() http.Handler {
 	mux.Handle("POST /cascades", s.authRequired(http.HandlerFunc(s.handleCascadeCreate)))
 	mux.Handle("GET /cascades/{id}/edit", s.authRequired(http.HandlerFunc(s.handleCascadeEditPage)))
 	mux.Handle("POST /cascades/{id}", s.authRequired(http.HandlerFunc(s.handleCascadeUpdate)))
+	mux.Handle("POST /cascades/{id}/apply", s.authRequired(http.HandlerFunc(s.handleCascadeApply)))
+	mux.Handle("POST /cascades/disable", s.authRequired(http.HandlerFunc(s.handleCascadeDisable)))
 	mux.Handle("POST /cascades/{id}/delete", s.authRequired(http.HandlerFunc(s.handleCascadeDelete)))
 	mux.Handle("GET /clients/new", s.authRequired(http.HandlerFunc(s.handleClientNewPage)))
 	mux.Handle("POST /clients", s.authRequired(http.HandlerFunc(s.handleClientCreate)))
@@ -623,15 +626,18 @@ func (s *Server) handleCascades(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, err)
 		return
 	}
+	runtimeStatus, _ := s.endpoint.ReadCascadeRuntimeStatus(r.Context())
 
 	user, _ := s.currentUser(r)
 	s.render(w, "cascades.html", templateData{
-		Title:       "Каскады",
-		Active:      "cascades",
-		AppName:     s.cfg.AppName,
-		CurrentUser: user,
-		Cascades:    cascades,
-		Notice:      r.URL.Query().Get("notice"),
+		Title:          "Каскады",
+		Active:         "cascades",
+		AppName:        s.cfg.AppName,
+		CurrentUser:    user,
+		Cascades:       cascades,
+		CascadeRuntime: runtimeStatus,
+		Notice:         r.URL.Query().Get("notice"),
+		Error:          r.URL.Query().Get("error"),
 	})
 }
 
@@ -754,6 +760,48 @@ func (s *Server) handleCascadeDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/cascades?notice=Каскад удалён", http.StatusSeeOther)
+}
+
+func (s *Server) handleCascadeApply(w http.ResponseWriter, r *http.Request) {
+	cascade, ok := s.mustCascade(w, r)
+	if !ok {
+		return
+	}
+	if s.endpoint == nil {
+		http.Redirect(w, r, "/cascades?error="+urlQueryEscape("Live mode выключен"), http.StatusSeeOther)
+		return
+	}
+
+	if err := s.endpoint.ApplyCascade(r.Context(), *cascade); err != nil {
+		http.Redirect(w, r, "/cascades?error="+urlQueryEscape(err.Error()), http.StatusSeeOther)
+		return
+	}
+
+	user, _ := s.currentUser(r)
+	if user != nil {
+		_ = s.store.AppendAudit(user.Username, "cascade-apply", cascade.DisplayName, fmt.Sprintf("cascade_id=%d", cascade.ID))
+	}
+
+	http.Redirect(w, r, "/cascades?notice=Каскад применён к runtime", http.StatusSeeOther)
+}
+
+func (s *Server) handleCascadeDisable(w http.ResponseWriter, r *http.Request) {
+	if s.endpoint == nil {
+		http.Redirect(w, r, "/cascades?error="+urlQueryEscape("Live mode выключен"), http.StatusSeeOther)
+		return
+	}
+
+	if err := s.endpoint.DisableCascade(r.Context()); err != nil {
+		http.Redirect(w, r, "/cascades?error="+urlQueryEscape(err.Error()), http.StatusSeeOther)
+		return
+	}
+
+	user, _ := s.currentUser(r)
+	if user != nil {
+		_ = s.store.AppendAudit(user.Username, "cascade-disable", "runtime", "forward_protocol=direct")
+	}
+
+	http.Redirect(w, r, "/cascades?notice=Runtime возвращён в direct mode", http.StatusSeeOther)
 }
 
 func (s *Server) handleClientNewPage(w http.ResponseWriter, r *http.Request) {

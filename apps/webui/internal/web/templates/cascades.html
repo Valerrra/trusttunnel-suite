@@ -8,9 +8,23 @@
 </div>
 
 <section class="panel">
+  {{if .CascadeRuntime.Applied}}
   <div class="alert notice">
-    Это первый этап каскадного режима: панель уже умеет хранить и редактировать upstream TrustTunnel-профили, а следующая итерация применит их к live endpoint-конфигу.
+    Runtime сейчас направлен через каскад <strong>{{.CascadeRuntime.DisplayName}}</strong> ({{.CascadeRuntime.Hostname}}) через local SOCKS bridge {{.CascadeRuntime.SocksAddress}}.
   </div>
+  {{else}}
+  <div class="alert notice">
+    Runtime сейчас работает в direct mode. Кнопка Apply переключит endpoint на local SOCKS bridge и направит исходящие подключения через выбранный TrustTunnel hop.
+  </div>
+  {{end}}
+
+  {{if .CascadeRuntime.Available}}
+  <div class="form-actions">
+    <form method="post" action="/cascades/disable">
+      <button class="button secondary" type="submit">Disable Runtime Cascade</button>
+    </form>
+  </div>
+  {{end}}
 
   {{if .Cascades}}
   <div class="table-wrap">
@@ -23,6 +37,7 @@
           <th>Username</th>
           <th>Protocol</th>
           <th>Status</th>
+          <th>Runtime</th>
           <th></th>
         </tr>
       </thead>
@@ -46,7 +61,17 @@
             <span class="muted">OFF</span>
             {{end}}
           </td>
+          <td>
+            {{if and $.CascadeRuntime.Applied (eq $.CascadeRuntime.CascadeID .ID)}}
+            <span class="conn-badge">ACTIVE</span>
+            {{else}}
+            <span class="muted">idle</span>
+            {{end}}
+          </td>
           <td class="actions">
+            <form method="post" action="/cascades/{{.ID}}/apply">
+              <button class="button small" type="submit">Apply</button>
+            </form>
             <a class="button secondary small" href="/cascades/{{.ID}}/edit">Редактировать</a>
             <form method="post" action="/cascades/{{.ID}}/delete" onsubmit="return confirm('Удалить каскад {{.DisplayName}}?');">
               <button class="button danger small" type="submit">Удалить</button>

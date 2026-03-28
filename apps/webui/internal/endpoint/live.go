@@ -43,6 +43,19 @@ type ClientStats struct {
 	UpdatedAt         time.Time `json:"updated_at"`
 }
 
+type CascadeRuntimeStatus struct {
+	Available     bool
+	Applied       bool
+	CascadeID     int64     `json:"cascade_id"`
+	DisplayName   string    `json:"display_name"`
+	Hostname      string    `json:"hostname"`
+	SocksAddress  string    `json:"socks_address"`
+	ServiceName   string    `json:"service_name"`
+	UpdatedAt     time.Time `json:"updated_at"`
+	EndpointMode  string    `json:"endpoint_mode"`
+	ClientBinPath string    `json:"client_bin_path"`
+}
+
 type clientStatsSnapshot struct {
 	GeneratedAt time.Time     `json:"generated_at"`
 	Clients     []ClientStats `json:"clients"`
@@ -211,6 +224,229 @@ func (l *Live) ReadClientStats(ctx context.Context) ([]ClientStats, error) {
 	}
 
 	return snapshot.Clients, nil
+}
+
+func (l *Live) ReadCascadeRuntimeStatus(ctx context.Context) (CascadeRuntimeStatus, error) {
+	if l == nil {
+		return CascadeRuntimeStatus{}, nil
+	}
+
+	status := CascadeRuntimeStatus{
+		Available:     true,
+		ServiceName:   "trusttunnel-cascade",
+		SocksAddress:  l.cfg.CascadeSocksAddress,
+		ClientBinPath: l.cfg.EndpointClientBinary,
+	}
+
+	raw, err := os.ReadFile(l.cfg.CascadeStateFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return status, nil
+		}
+		return status, err
+	}
+
+	if err := json.Unmarshal(raw, &status); err != nil {
+		return status, err
+	}
+	status.Available = true
+	return status, nil
+}
+
+func (l *Live) ApplyCascade(ctx context.Context, cascade storage.Cascade) error {
+	if l == nil {
+		return fmt.Errorf("live endpoint mode is disabled")
+	}
+	if strings.TrimSpace(l.cfg.EndpointClientBinary) == "" {
+		return fmt.Errorf("TT_WEBUI_ENDPOINT_CLIENT_BIN is not configured")
+	}
+
+	if err := os.MkdirAll(l.cfg.CascadeWorkDir, 0o755); err != nil {
+		return fmt.Errorf("create cascade work dir: %w", err)
+	}
+
+	if err := l.ensureClientBinary(); err != nil {
+		return err
+	}
+
+	clientConfigPath := filepath.Join(l.cfg.CascadeWorkDir, "client.toml")
+	clientConfig, err := l.renderCascadeClientConfig(cascade)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(clientConfigPath, []byte(clientConfig), 0o600); err != nil {
+		return fmt.Errorf("write cascade client config: %w", err)
+	}
+
+	servicePath := "/etc/systemd/system/trusttunnel-cascade.service"
+	serviceBody := l.renderCascadeService(clientConfigPath)
+	if err := os.WriteFile(servicePath, []byte(serviceBody), 0o644); err != nil {
+		return fmt.Errorf("write cascade systemd unit: %w", err)
+	}
+
+	if err := l.replaceForwardProtocolSection(fmt.Sprintf("[forward_protocol.socks5]\naddress = %q\nextended_auth = false\n", l.cfg.CascadeSocksAddress)); err != nil {
+		return err
+	}
+
+	if err := l.runSystemctl(ctx, "daemon-reload"); err != nil {
+		return err
+	}
+	if err := l.runSystemctl(ctx, "enable", "trusttunnel-cascade"); err != nil {
+		return err
+	}
+	if err := l.runSystemctl(ctx, "restart", "trusttunnel-cascade"); err != nil {
+		return err
+	}
+	if err := l.runSystemctl(ctx, "restart", "trusttunnel"); err != nil {
+		return err
+	}
+
+	status := CascadeRuntimeStatus{
+		Available:     true,
+		Applied:       true,
+		CascadeID:     cascade.ID,
+		DisplayName:   cascade.DisplayName,
+		Hostname:      cascade.Hostname,
+		SocksAddress:  l.cfg.CascadeSocksAddress,
+		ServiceName:   "trusttunnel-cascade",
+		UpdatedAt:     time.Now().UTC(),
+		EndpointMode:  "socks5",
+		ClientBinPath: l.cfg.EndpointClientBinary,
+	}
+	raw, _ := json.MarshalIndent(status, "", "  ")
+	_ = os.WriteFile(l.cfg.CascadeStateFile, raw, 0o600)
+
+	return nil
+}
+
+func (l *Live) DisableCascade(ctx context.Context) error {
+	if l == nil {
+		return fmt.Errorf("live endpoint mode is disabled")
+	}
+
+	if err := l.replaceForwardProtocolSection("[forward_protocol]\ndirect = {}\n"); err != nil {
+		return err
+	}
+
+	if err := l.runSystemctl(ctx, "restart", "trusttunnel"); err != nil {
+		return err
+	}
+	_ = l.runSystemctl(ctx, "stop", "trusttunnel-cascade")
+	_ = os.Remove(l.cfg.CascadeStateFile)
+
+	return nil
+}
+
+func (l *Live) ensureClientBinary() error {
+	info, err := os.Stat(l.cfg.EndpointClientBinary)
+	if err != nil {
+		return fmt.Errorf("trusttunnel_client not found at %s", l.cfg.EndpointClientBinary)
+	}
+	if info.IsDir() {
+		return fmt.Errorf("TT_WEBUI_ENDPOINT_CLIENT_BIN points to a directory: %s", l.cfg.EndpointClientBinary)
+	}
+	return nil
+}
+
+func (l *Live) renderCascadeClientConfig(cascade storage.Cascade) (string, error) {
+	address := ""
+	if len(cascade.Addresses) > 0 {
+		address = cascade.Addresses[0]
+	}
+	if strings.TrimSpace(address) == "" {
+		return "", fmt.Errorf("cascade address list is empty")
+	}
+
+	certificateValue := `""`
+	if strings.TrimSpace(cascade.CertificatePEM) != "" {
+		certificateValue = "\"\"\"\n" + strings.TrimSpace(cascade.CertificatePEM) + "\n\"\"\""
+	}
+
+	return fmt.Sprintf(`loglevel = "info"
+vpn_mode = "general"
+killswitch_enabled = false
+killswitch_allow_ports = []
+post_quantum_group_enabled = false
+exclusions = []
+dns_upstreams = []
+
+[endpoint]
+hostname = %q
+addresses = [%q]
+has_ipv6 = false
+username = %q
+password = %q
+client_random = %q
+skip_verification = %t
+certificate = %s
+upstream_protocol = %q
+upstream_fallback_protocol = ""
+anti_dpi = %t
+custom_sni = %q
+
+[listener]
+
+[listener.socks]
+address = %q
+username = ""
+password = ""
+`, cascade.Hostname, address, cascade.Username, cascade.Password, cascade.ClientRandomPrefix, cascade.SkipVerification, certificateValue, cascade.UpstreamProtocol, cascade.AntiDPI, cascade.CustomSNI, l.cfg.CascadeSocksAddress), nil
+}
+
+func (l *Live) renderCascadeService(clientConfigPath string) string {
+	return fmt.Sprintf(`[Unit]
+Description=TrustTunnel Cascade Bridge
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=%s -c %s
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+`, l.cfg.EndpointClientBinary, clientConfigPath)
+}
+
+func (l *Live) replaceForwardProtocolSection(replacement string) error {
+	raw, err := os.ReadFile(l.cfg.EndpointVPNConfigPath)
+	if err != nil {
+		return fmt.Errorf("read endpoint vpn config: %w", err)
+	}
+
+	text := string(raw)
+	start := strings.Index(text, "[forward_protocol")
+	if start >= 0 {
+		sectionStart := strings.LastIndex(text[:start], "\n")
+		if sectionStart >= 0 {
+			start = sectionStart + 1
+		}
+		end := len(text)
+		if next := strings.Index(text[start+1:], "\n["); next >= 0 {
+			end = start + 1 + next
+		}
+		text = text[:start] + strings.TrimRight(replacement, "\n") + "\n" + strings.TrimLeft(text[end:], "\n")
+	} else {
+		text = strings.TrimRight(text, "\n") + "\n\n" + strings.TrimRight(replacement, "\n") + "\n"
+	}
+
+	if err := os.WriteFile(l.cfg.EndpointVPNConfigPath, []byte(text), 0o644); err != nil {
+		return fmt.Errorf("write endpoint vpn config: %w", err)
+	}
+	return nil
+}
+
+func (l *Live) runSystemctl(ctx context.Context, args ...string) error {
+	cmd := exec.CommandContext(ctx, "systemctl", args...)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("systemctl %s failed: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(stderr.String()))
+	}
+	return nil
 }
 
 type cpuSample struct {

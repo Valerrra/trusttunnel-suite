@@ -22,12 +22,16 @@ type Config struct {
 	EndpointCredentialsFilePath string
 	EndpointPublicAddress       string
 	EndpointPort                int
+	EndpointClientBinary        string
 	ClientStatsFilePath         string
 	MetricsDiskPath             string
 	RoutingDataDir              string
 	GeoIPSourceURL              string
 	GeoSiteSourceURL            string
 	ZapretPresetDir             string
+	CascadeWorkDir              string
+	CascadeStateFile            string
+	CascadeSocksAddress         string
 }
 
 func LoadConfig() Config {
@@ -53,12 +57,16 @@ func LoadConfig() Config {
 		EndpointCredentialsFilePath: env("TT_WEBUI_ENDPOINT_CREDENTIALS_FILE", filepath.Join(endpointDir, "credentials.toml")),
 		EndpointPublicAddress:       env("TT_WEBUI_ENDPOINT_PUBLIC_ADDRESS", ""),
 		EndpointPort:                envInt("TT_WEBUI_ENDPOINT_PORT", 443),
+		EndpointClientBinary:        env("TT_WEBUI_ENDPOINT_CLIENT_BIN", filepath.Join(endpointDir, "trusttunnel_client")),
 		ClientStatsFilePath:         env("TT_WEBUI_CLIENT_STATS_FILE", filepath.Join(endpointDir, "webui-client-stats.json")),
 		MetricsDiskPath:             env("TT_WEBUI_METRICS_DISK_PATH", endpointDir),
 		RoutingDataDir:              env("TT_WEBUI_ROUTING_DATA_DIR", filepath.Join(wd, "data", "routing")),
 		GeoIPSourceURL:              env("TT_WEBUI_GEOIP_SOURCE_URL", "https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/geoip.dat"),
 		GeoSiteSourceURL:            env("TT_WEBUI_GEOSITE_SOURCE_URL", "https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/geosite.dat"),
 		ZapretPresetDir:             env("TT_WEBUI_ZAPRET_PRESET_DIR", ""),
+		CascadeWorkDir:              env("TT_WEBUI_CASCADE_WORK_DIR", filepath.Join(endpointDir, "cascade")),
+		CascadeStateFile:            env("TT_WEBUI_CASCADE_STATE_FILE", filepath.Join(endpointDir, "cascade", "runtime-state.json")),
+		CascadeSocksAddress:         env("TT_WEBUI_CASCADE_SOCKS_ADDRESS", "127.0.0.1:11080"),
 	}
 }
 
