@@ -20,7 +20,7 @@
       <div class="access-card-head">
         <div>
           <h3>SOCKS5</h3>
-          <p class="muted">Поднимается через microsocks. Для безопасности логин и пароль генерируются автоматически и сохраняются между перезапусками.</p>
+          <p class="muted">Поднимается через microsocks. Можно задать логин и пароль вручную, а если оставить поля пустыми, панель сгенерирует их автоматически.</p>
         </div>
         {{if .Socks5Runtime.Enabled}}
         <span class="conn-badge">ACTIVE</span>
@@ -29,10 +29,20 @@
         {{end}}
       </div>
 
-      <form class="inline-form" method="post" action="/cascades/access/socks5/apply">
+      <form class="stack-form" method="post" action="/cascades/access/socks5/apply">
+        <div class="inline-form">
+          <label>
+            <span>Порт</span>
+            <input name="port" type="number" min="1" max="65535" value="{{if .Socks5Runtime.Port}}{{.Socks5Runtime.Port}}{{else}}10808{{end}}">
+          </label>
+          <label>
+            <span>Логин</span>
+            <input name="username" type="text" value="{{.Socks5Runtime.Username}}" placeholder="auto">
+          </label>
+        </div>
         <label>
-          <span>Порт</span>
-          <input name="port" type="number" min="1" max="65535" value="{{if .Socks5Runtime.Port}}{{.Socks5Runtime.Port}}{{else}}10808{{end}}">
+          <span>Пароль</span>
+          <input name="password" type="text" value="{{.Socks5Runtime.Password}}" placeholder="auto">
         </label>
         <button class="button" type="submit">Включить SOCKS5</button>
       </form>

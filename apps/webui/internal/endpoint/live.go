@@ -426,7 +426,7 @@ func (l *Live) DisableCascade(ctx context.Context) error {
 	return nil
 }
 
-func (l *Live) ApplySocks5(ctx context.Context, port int) error {
+func (l *Live) ApplySocks5(ctx context.Context, port int, username, password string) error {
 	if l == nil {
 		return fmt.Errorf("live endpoint mode is disabled")
 	}
@@ -441,8 +441,14 @@ func (l *Live) ApplySocks5(ctx context.Context, port int) error {
 	}
 
 	existing, _ := l.ReadSocks5RuntimeStatus(ctx)
-	username := existing.Username
-	password := existing.Password
+	username = strings.TrimSpace(username)
+	password = strings.TrimSpace(password)
+	if username == "" {
+		username = existing.Username
+	}
+	if password == "" {
+		password = existing.Password
+	}
 	if strings.TrimSpace(username) == "" {
 		username = "tt" + randomAlphaNum(10)
 	}

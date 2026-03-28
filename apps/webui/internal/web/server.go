@@ -828,13 +828,15 @@ func (s *Server) handleSocks5Apply(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/cascades?error="+urlQueryEscape("Неверный порт SOCKS5"), http.StatusSeeOther)
 		return
 	}
-	if err := s.endpoint.ApplySocks5(r.Context(), port); err != nil {
+	username := strings.TrimSpace(r.FormValue("username"))
+	password := strings.TrimSpace(r.FormValue("password"))
+	if err := s.endpoint.ApplySocks5(r.Context(), port, username, password); err != nil {
 		http.Redirect(w, r, "/cascades?error="+urlQueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
 	user, _ := s.currentUser(r)
 	if user != nil {
-		_ = s.store.AppendAudit(user.Username, "socks5-apply", "runtime", fmt.Sprintf("port=%d", port))
+		_ = s.store.AppendAudit(user.Username, "socks5-apply", "runtime", fmt.Sprintf("port=%d username=%s", port, username))
 	}
 	http.Redirect(w, r, "/cascades?notice=SOCKS5 включён", http.StatusSeeOther)
 }
