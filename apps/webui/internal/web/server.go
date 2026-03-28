@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"crypto/rand"
 	"embed"
 	"encoding/base64"
 	"errors"
@@ -900,18 +901,19 @@ func (s *Server) handleMTProtoDisable(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleClientNewPage(w http.ResponseWriter, r *http.Request) {
+	defaults, err := s.defaultClientForm(r.Context())
+	if err != nil {
+		s.serverError(w, err)
+		return
+	}
 	user, _ := s.currentUser(r)
 	s.render(w, "client_form.html", templateData{
-		Title:       "Новый клиент",
-		Active:      "clients",
-		AppName:     s.cfg.AppName,
-		CurrentUser: user,
-		Form: clientFormData{
-			HasIPv6:          true,
-			UpstreamProtocol: "http2",
-			SubmitLabel:      "Создать клиента",
-			CancelURL:        "/clients",
-		},
+		Title:        "Новый клиент",
+		Active:       "clients",
+		AppName:      s.cfg.AppName,
+		CurrentUser:  user,
+		EndpointAddr: s.endpointAddressLabel(),
+		Form:         defaults,
 	})
 }
 
@@ -920,11 +922,12 @@ func (s *Server) handleClientCreate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		user, _ := s.currentUser(r)
 		s.render(w, "client_form.html", templateData{
-			Title:       "Новый клиент",
-			Active:      "clients",
-			AppName:     s.cfg.AppName,
-			CurrentUser: user,
-			Error:       err.Error(),
+			Title:        "Новый клиент",
+			Active:       "clients",
+			AppName:      s.cfg.AppName,
+			CurrentUser:  user,
+			Error:        err.Error(),
+			EndpointAddr: s.endpointAddressLabel(),
 			Form: func() clientFormData {
 				form.SubmitLabel = "Создать клиента"
 				form.CancelURL = "/clients"
@@ -963,11 +966,12 @@ func (s *Server) handleClientEditPage(w http.ResponseWriter, r *http.Request) {
 
 	user, _ := s.currentUser(r)
 	s.render(w, "client_form.html", templateData{
-		Title:       "Редактирование клиента",
-		Active:      "clients",
-		AppName:     s.cfg.AppName,
-		CurrentUser: user,
-		Form:        formFromClient(*client, "Сохранить изменения"),
+		Title:        "Редактирование клиента",
+		Active:       "clients",
+		AppName:      s.cfg.AppName,
+		CurrentUser:  user,
+		EndpointAddr: s.endpointAddressLabel(),
+		Form:         formFromClient(*client, "Сохранить изменения"),
 	})
 }
 
@@ -984,12 +988,13 @@ func (s *Server) handleClientUpdate(w http.ResponseWriter, r *http.Request) {
 		form.SubmitLabel = "Сохранить изменения"
 		form.CancelURL = "/clients"
 		s.render(w, "client_form.html", templateData{
-			Title:       "Редактирование клиента",
-			Active:      "clients",
-			AppName:     s.cfg.AppName,
-			CurrentUser: user,
-			Error:       err.Error(),
-			Form:        form,
+			Title:        "Редактирование клиента",
+			Active:       "clients",
+			AppName:      s.cfg.AppName,
+			CurrentUser:  user,
+			Error:        err.Error(),
+			EndpointAddr: s.endpointAddressLabel(),
+			Form:         form,
 		})
 		return
 	}
@@ -1053,13 +1058,14 @@ func (s *Server) handleClientExportPage(w http.ResponseWriter, r *http.Request) 
 
 	user, _ := s.currentUser(r)
 	s.render(w, "client_export.html", templateData{
-		Title:       "Экспорт клиента",
-		Active:      "clients",
-		AppName:     s.cfg.AppName,
-		CurrentUser: user,
-		Client:      client,
-		DeepLink:    deepLink,
-		QRDataURI:   qrDataURI,
+		Title:        "Экспорт клиента",
+		Active:       "clients",
+		AppName:      s.cfg.AppName,
+		CurrentUser:  user,
+		Client:       client,
+		DeepLink:     deepLink,
+		QRDataURI:    qrDataURI,
+		EndpointAddr: s.endpointAddressLabel(),
 	})
 }
 
@@ -1385,7 +1391,7 @@ func formFromClient(client storage.Client, submitLabel string) clientFormData {
 		ID:                 client.ID,
 		DisplayName:        client.DisplayName,
 		Hostname:           client.Hostname,
-		Addresses:          strings.Join(client.Addresses, "\n"),
+		Addresses:          strings.Join(client.Addresses, ", "),
 		Username:           client.Username,
 		Password:           client.Password,
 		CustomSNI:          client.CustomSNI,
@@ -1398,6 +1404,64 @@ func formFromClient(client storage.Client, submitLabel string) clientFormData {
 		SubmitLabel:        submitLabel,
 		CancelURL:          "/clients",
 	}
+}
+
+func (s *Server) defaultClientForm(ctx context.Context) (clientFormData, error) {
+	form := clientFormData{
+		HasIPv6:          true,
+		UpstreamProtocol: "http2",
+		SubmitLabel:      "Создать клиента",
+		CancelURL:        "/clients",
+		Username:         "user-" + randomString(6),
+		Password:         randomString(18),
+	}
+
+	host := strings.TrimSpace(s.cfg.EndpointPublicAddress)
+	if host != "" {
+		form.Hostname = host
+		if s.cfg.EndpointPort > 0 {
+			form.Addresses = fmt.Sprintf("%s:%d", host, s.cfg.EndpointPort)
+		}
+	}
+
+	clients, err := s.store.ListClients(ctx)
+	if err != nil {
+		return form, err
+	}
+	if len(clients) == 0 {
+		return form, nil
+	}
+
+	seed := clients[0]
+	if form.Hostname == "" {
+		form.Hostname = seed.Hostname
+	}
+	if form.Addresses == "" {
+		form.Addresses = strings.Join(seed.Addresses, ", ")
+	}
+	form.HasIPv6 = seed.HasIPv6
+	form.SkipVerification = seed.SkipVerification
+	form.CertificatePEM = seed.CertificatePEM
+	form.UpstreamProtocol = seed.UpstreamProtocol
+	form.AntiDPI = seed.AntiDPI
+	form.CustomSNI = seed.CustomSNI
+	form.ClientRandomPrefix = seed.ClientRandomPrefix
+	return form, nil
+}
+
+func randomString(length int) string {
+	if length <= 0 {
+		return ""
+	}
+	raw := make([]byte, length)
+	if _, err := rand.Read(raw); err != nil {
+		return "fallback123"
+	}
+	token := base64.RawURLEncoding.EncodeToString(raw)
+	if len(token) > length {
+		token = token[:length]
+	}
+	return token
 }
 
 func parseCascadeForm(r *http.Request) (cascadeFormData, *storage.Cascade, error) {

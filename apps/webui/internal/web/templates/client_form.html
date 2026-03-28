@@ -2,79 +2,107 @@
 <div class="page-header">
   <div>
     <h1>{{if .Form.ID}}Редактирование клиента{{else}}Новый клиент{{end}}</h1>
-    <p>Эти поля превращаются в официальный TrustTunnel deep-link формата `tt://`.</p>
+    <p>{{if .Form.ID}}Профиль пользователя текущего TrustTunnel endpoint.{{else}}Новый клиент здесь означает нового пользователя текущего TrustTunnel endpoint, а не отдельный listener или случайный порт.{{end}}</p>
   </div>
 </div>
 
 <section class="panel">
-  <form class="form grid" method="post" action="{{if .Form.ID}}/clients/{{.Form.ID}}{{else}}/clients{{end}}">
-    <label>
-      <span>Имя профиля</span>
-      <input type="text" name="display_name" value="{{.Form.DisplayName}}" required>
-    </label>
-
-    <label>
-      <span>Hostname</span>
-      <input type="text" name="hostname" value="{{.Form.Hostname}}" placeholder="vpn.example.com" required>
-    </label>
-
-    <label class="full">
-      <span>Addresses</span>
-      <textarea name="addresses" rows="3" placeholder="203.0.113.10:443&#10;203.0.113.11:443" required>{{.Form.Addresses}}</textarea>
-    </label>
-
-    <label>
-      <span>Username</span>
-      <input type="text" name="username" value="{{.Form.Username}}" required>
-    </label>
-
-    <label>
-      <span>Password</span>
-      <input type="text" name="password" value="{{.Form.Password}}" required>
-    </label>
-
-    <label>
-      <span>Custom SNI</span>
-      <input type="text" name="custom_sni" value="{{.Form.CustomSNI}}" placeholder="edge.example.com">
-    </label>
-
-    <label>
-      <span>Client random prefix</span>
-      <input type="text" name="client_random_prefix" value="{{.Form.ClientRandomPrefix}}" placeholder="abcd1234/ffff0000">
-    </label>
-
-    <label>
-      <span>Upstream protocol</span>
-      <select name="upstream_protocol">
-        <option value="http2" {{if eq .Form.UpstreamProtocol "http2"}}selected{{end}}>http2</option>
-        <option value="http3" {{if eq .Form.UpstreamProtocol "http3"}}selected{{end}}>http3</option>
-      </select>
-    </label>
-
-    <label class="checkbox">
-      <input type="checkbox" name="has_ipv6" {{if .Form.HasIPv6}}checked{{end}}>
-      <span>IPv6 доступен</span>
-    </label>
-
-    <label class="checkbox">
-      <input type="checkbox" name="skip_verification" {{if .Form.SkipVerification}}checked{{end}}>
-      <span>Skip certificate verification</span>
-    </label>
-
-    <label class="checkbox">
-      <input type="checkbox" name="anti_dpi" {{if .Form.AntiDPI}}checked{{end}}>
-      <span>Anti DPI</span>
-    </label>
-
-    <label class="full">
-      <span>Certificate PEM</span>
-      <textarea name="certificate_pem" rows="7" placeholder="-----BEGIN CERTIFICATE-----">{{.Form.CertificatePEM}}</textarea>
-    </label>
-
-    <div class="form-actions full">
-      <button class="button" type="submit">{{.Form.SubmitLabel}}</button>
-      <a class="button secondary" href="{{.Form.CancelURL}}">Отмена</a>
+  {{if not .Form.ID}}
+  <div class="client-create-summary">
+    <div class="summary-item">
+      <span>Endpoint</span>
+      <strong>{{.EndpointAddr}}</strong>
     </div>
+    <div class="summary-item">
+      <span>Hostname</span>
+      <strong>{{.Form.Hostname}}</strong>
+    </div>
+    <div class="summary-item">
+      <span>Address</span>
+      <strong>{{.Form.Addresses}}</strong>
+    </div>
+    <div class="summary-item">
+      <span>Transport</span>
+      <strong>{{.Form.UpstreamProtocol}}</strong>
+    </div>
+  </div>
+  {{end}}
+
+  <form class="form" method="post" action="{{if .Form.ID}}/clients/{{.Form.ID}}{{else}}/clients{{end}}">
+    <div class="single-line-form client-primary-form">
+      <label class="compact-field grow">
+        <span>Имя клиента</span>
+        <input type="text" name="display_name" value="{{.Form.DisplayName}}" required>
+      </label>
+
+      <label class="compact-field">
+        <span>Username</span>
+        <input type="text" name="username" value="{{.Form.Username}}" required>
+      </label>
+
+      <label class="compact-field grow">
+        <span>Password</span>
+        <input type="text" name="password" value="{{.Form.Password}}" required>
+      </label>
+
+      <div class="form-actions compact-actions">
+        <button class="button" type="submit">{{.Form.SubmitLabel}}</button>
+        <a class="button secondary" href="{{.Form.CancelURL}}">Отмена</a>
+      </div>
+    </div>
+
+    <details class="advanced-details" {{if .Form.ID}}open{{end}}>
+      <summary>Расширенные параметры</summary>
+      <div class="form grid advanced-grid">
+        <label>
+          <span>Hostname</span>
+          <input type="text" name="hostname" value="{{.Form.Hostname}}" placeholder="vpn.example.com" required>
+        </label>
+
+        <label>
+          <span>Addresses</span>
+          <input type="text" name="addresses" value="{{.Form.Addresses}}" placeholder="vpn.example.com:443" required>
+        </label>
+
+        <label>
+          <span>Custom SNI</span>
+          <input type="text" name="custom_sni" value="{{.Form.CustomSNI}}" placeholder="edge.example.com">
+        </label>
+
+        <label>
+          <span>Client random prefix</span>
+          <input type="text" name="client_random_prefix" value="{{.Form.ClientRandomPrefix}}" placeholder="abcd1234/ffff0000">
+        </label>
+
+        <label>
+          <span>Upstream protocol</span>
+          <select name="upstream_protocol">
+            <option value="http2" {{if eq .Form.UpstreamProtocol "http2"}}selected{{end}}>http2</option>
+            <option value="http3" {{if eq .Form.UpstreamProtocol "http3"}}selected{{end}}>http3</option>
+          </select>
+        </label>
+
+        <label class="checkbox">
+          <input type="checkbox" name="has_ipv6" {{if .Form.HasIPv6}}checked{{end}}>
+          <span>IPv6 доступен</span>
+        </label>
+
+        <label class="checkbox">
+          <input type="checkbox" name="skip_verification" {{if .Form.SkipVerification}}checked{{end}}>
+          <span>Skip certificate verification</span>
+        </label>
+
+        <label class="checkbox">
+          <input type="checkbox" name="anti_dpi" {{if .Form.AntiDPI}}checked{{end}}>
+          <span>Anti DPI</span>
+        </label>
+
+        <label class="full">
+          <span>Certificate PEM</span>
+          <textarea name="certificate_pem" rows="7" placeholder="-----BEGIN CERTIFICATE-----">{{.Form.CertificatePEM}}</textarea>
+        </label>
+      </div>
+    </details>
   </form>
 </section>
 {{end}}

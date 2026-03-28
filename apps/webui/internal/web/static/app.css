@@ -164,6 +164,31 @@ select {
   max-width: 480px;
 }
 
+.client-create-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.summary-item {
+  background: rgba(255, 251, 242, 0.82);
+  border: 1px solid rgba(215, 202, 183, 0.8);
+  border-radius: 16px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 6px;
+}
+
+.summary-item span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.summary-item strong {
+  font-size: 0.95rem;
+}
+
 .two-column,
 .export-grid {
   display: grid;
@@ -396,6 +421,29 @@ select {
   background: #fff;
   color: var(--ink);
   min-width: 0;
+}
+
+.client-primary-form {
+  grid-template-columns: minmax(180px, 1.1fr) minmax(160px, 0.8fr) minmax(220px, 1fr) auto;
+}
+
+.compact-actions {
+  margin-top: 0;
+  align-self: end;
+}
+
+.advanced-details {
+  margin-top: 18px;
+}
+
+.advanced-details summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #4f5e67;
+}
+
+.advanced-grid {
+  margin-top: 14px;
 }
 
 .inline-form {
@@ -725,6 +773,7 @@ th {
 
   .stats-grid,
   .access-grid,
+  .client-create-summary,
   .gauge-grid,
   .dashboard-grid,
   .metric-grid,
@@ -761,6 +810,7 @@ th {
 
   .inline-form,
   .single-line-form,
+  .client-primary-form,
   .access-card-head {
     grid-template-columns: 1fr;
     flex-direction: column;

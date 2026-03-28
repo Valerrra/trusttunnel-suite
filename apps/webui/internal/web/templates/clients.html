@@ -2,7 +2,7 @@
 <div class="page-header">
   <div>
     <h1>Clients</h1>
-    <p>Управление профилями, `tt://` экспортом и серверной статистикой по клиентам, если доступен snapshot.</p>
+    <p>Пользователи текущего TrustTunnel endpoint. Новый клиент здесь добавляет учётку к существующему <code>:443</code> endpoint, а не поднимает новый listener.</p>
   </div>
   <div class="page-header-actions">
     <a class="button secondary" href="/dashboard">Открыть Dashboard</a>
@@ -11,11 +11,25 @@
 </div>
 
 <section class="panel">
+  <div class="client-create-summary">
+    <div class="summary-item">
+      <span>Endpoint</span>
+      <strong>{{.EndpointAddr}}</strong>
+    </div>
+    <div class="summary-item">
+      <span>Модель</span>
+      <strong>Shared listener</strong>
+    </div>
+    <div class="summary-item">
+      <span>Новые клиенты</span>
+      <strong>Новые users</strong>
+    </div>
+  </div>
+
   {{if not .HostMetrics.ClientStatsAvailable}}
   <div class="alert notice">
-    Per-client traffic и connections появятся, если на сервере будет доступен snapshot-файл:
+    Пока в TrustTunnel endpoint нет прямого источника per-user traffic/connections для WebUI. Эти цифры появятся, если на сервере будет отдельный snapshot collector:
     <strong>{{.ClientStatsPath}}</strong>.
-    Пока TrustTunnel endpoint не даёт эти цифры в WebUI напрямую.
   </div>
   {{end}}
 
