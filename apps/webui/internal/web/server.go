@@ -183,6 +183,7 @@ func (s *Server) Routes() http.Handler {
 	mux.Handle("POST /cascades/access/socks5/apply", s.authRequired(http.HandlerFunc(s.handleSocks5Apply)))
 	mux.Handle("POST /cascades/access/socks5/disable", s.authRequired(http.HandlerFunc(s.handleSocks5Disable)))
 	mux.Handle("POST /cascades/access/mtproto/apply", s.authRequired(http.HandlerFunc(s.handleMTProtoApply)))
+	mux.Handle("POST /cascades/access/mtproto/generate-secret", s.authRequired(http.HandlerFunc(s.handleMTProtoGenerateSecret)))
 	mux.Handle("POST /cascades/access/mtproto/disable", s.authRequired(http.HandlerFunc(s.handleMTProtoDisable)))
 	mux.Handle("POST /cascades/{id}/delete", s.authRequired(http.HandlerFunc(s.handleCascadeDelete)))
 	mux.Handle("GET /clients/new", s.authRequired(http.HandlerFunc(s.handleClientNewPage)))
@@ -886,6 +887,29 @@ func (s *Server) handleMTProtoApply(w http.ResponseWriter, r *http.Request) {
 		_ = s.store.AppendAudit(user.Username, "mtproto-apply", "runtime", fmt.Sprintf("port=%d fronting=%s secret=%s", port, frontingDomain, secretMode))
 	}
 	http.Redirect(w, r, "/cascades?notice=MTProto включён", http.StatusSeeOther)
+}
+
+func (s *Server) handleMTProtoGenerateSecret(w http.ResponseWriter, r *http.Request) {
+	if s.endpoint == nil {
+		http.Error(w, "Live mode выключен", http.StatusBadRequest)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Не удалось прочитать форму", http.StatusBadRequest)
+		return
+	}
+	frontingDomain := strings.TrimSpace(r.FormValue("fronting_domain"))
+	if frontingDomain == "" {
+		http.Error(w, "Fronting domain is required", http.StatusBadRequest)
+		return
+	}
+	secret, err := s.endpoint.GenerateMTProtoSecret(r.Context(), frontingDomain)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	_, _ = w.Write([]byte(secret))
 }
 
 func (s *Server) handleMTProtoDisable(w http.ResponseWriter, r *http.Request) {

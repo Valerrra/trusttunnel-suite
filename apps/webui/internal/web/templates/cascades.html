@@ -46,7 +46,7 @@
         </label>
         <div class="action-row">
           <form id="socks5-apply" method="post" action="/cascades/access/socks5/apply">
-            <button class="button compact {{if .Socks5Runtime.Enabled}}secondary{{end}}" type="submit" {{if .Socks5Runtime.Enabled}}disabled{{end}}>Включить SOCKS5</button>
+            <button class="button compact {{if .Socks5Runtime.Enabled}}secondary{{end}}" type="submit">{{if .Socks5Runtime.Enabled}}Применить SOCKS5{{else}}Включить SOCKS5{{end}}</button>
           </form>
           <form method="post" action="/cascades/access/socks5/disable">
             <button class="button compact {{if not .Socks5Runtime.Enabled}}secondary{{end}}" type="submit" {{if not .Socks5Runtime.Enabled}}disabled{{end}}>Выключить SOCKS5</button>
@@ -85,19 +85,19 @@
           </label>
           <label class="grow">
             <span>Fronting domain</span>
-            <input form="mtproto-apply" name="fronting_domain" type="text" value="{{if .MTProtoRuntime.FrontingDomain}}{{.MTProtoRuntime.FrontingDomain}}{{else}}www.cloudflare.com{{end}}">
+            <input id="mtproto-fronting-input" form="mtproto-apply" name="fronting_domain" type="text" value="{{if .MTProtoRuntime.FrontingDomain}}{{.MTProtoRuntime.FrontingDomain}}{{else}}www.cloudflare.com{{end}}">
           </label>
         </div>
         <label>
           <span>Secret</span>
           <div class="inline-secret-row">
             <input id="mtproto-secret-input" form="mtproto-apply" name="secret" type="text" value="{{.MTProtoRuntime.Secret}}" placeholder="auto-generate">
-            <button class="button compact secondary" type="button" onclick="document.getElementById('mtproto-secret-input').value = (self.crypto && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2));">Random</button>
+            <button class="button compact secondary" type="button" onclick="(async () => { const fronting = document.getElementById('mtproto-fronting-input').value.trim(); if (!fronting) { alert('Укажи fronting domain'); return; } const response = await fetch('/cascades/access/mtproto/generate-secret', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }, body: 'fronting_domain=' + encodeURIComponent(fronting) }); const text = await response.text(); if (!response.ok) { alert(text || 'Не удалось сгенерировать secret'); return; } document.getElementById('mtproto-secret-input').value = text.trim(); })();">Generate</button>
           </div>
         </label>
         <div class="action-row">
           <form id="mtproto-apply" method="post" action="/cascades/access/mtproto/apply">
-            <button class="button compact {{if .MTProtoRuntime.Enabled}}secondary{{end}}" type="submit" {{if .MTProtoRuntime.Enabled}}disabled{{end}}>Включить MTProto</button>
+            <button class="button compact {{if .MTProtoRuntime.Enabled}}secondary{{end}}" type="submit">{{if .MTProtoRuntime.Enabled}}Применить MTProto{{else}}Включить MTProto{{end}}</button>
           </form>
           <form method="post" action="/cascades/access/mtproto/disable">
             <button class="button compact {{if not .MTProtoRuntime.Enabled}}secondary{{end}}" type="submit" {{if not .MTProtoRuntime.Enabled}}disabled{{end}}>Выключить MTProto</button>
