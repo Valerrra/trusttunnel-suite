@@ -133,6 +133,12 @@ func (l *Live) SyncCredentials(ctx context.Context, clients []storage.Client) er
 		return fmt.Errorf("write credentials file: %w", err)
 	}
 
+	// TrustTunnel endpoint keeps credentials in memory, so newly issued users
+	// do not become active until the service is restarted.
+	if err := l.runSystemctl(ctx, "restart", "trusttunnel"); err != nil {
+		return err
+	}
+
 	return nil
 }
 
