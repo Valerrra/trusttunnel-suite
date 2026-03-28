@@ -108,7 +108,7 @@ Current Linux portable SHA-256:
 
 Known runtime issue from user test log:
 
-- app reaches FI endpoint and reports `Successfully connected to endpoint`
+- app reaches the endpoint and reports `Successfully connected to endpoint`
 - then Linux tun setup fails with:
   - `OS_TUNNEL_LINUX setup_if: Failed to set IPv4 address`
   - `Unable to setup routes for linuxtun session`
@@ -308,8 +308,7 @@ SHA-256:
 Known current state:
 
 - build is `arm64` only
-- user verified live VPN egress IP:
-  - `109.206.243.245`
+- backend path was verified in a live VPN scenario
 
 ## WebUI Build
 
@@ -347,20 +346,11 @@ go build -o build/trusttunnel-webui ./cmd/webui
   - `/mnt/d/VPN/trusttunnel-suite/apps/webui/deploy/systemd/trusttunnel-webui.service`
   - `/mnt/d/VPN/trusttunnel-suite/apps/webui/deploy/systemd/trusttunnel-webui.env.example`
 
-Current live FI state:
-
-- panel URL:
-  - `http://fin.dsinkerii.com/`
-- endpoint hostname:
-  - `fin.dsinkerii.com`
-
 ## Quick References
 
 - Architecture:
   - `/mnt/d/VPN/trusttunnel-suite/PROJECT_ARCHITECTURE.md`
 - Main project README:
   - `/mnt/d/VPN/trusttunnel-suite/README.md`
-- Staging notes:
-  - `/mnt/d/VPN/trusttunnel-suite/docs/FI_STAGING.md`
 - Memory note:
   - `/mnt/d/VPN/trusttunnel-suite/docs/CODEX_MEMORY.md`

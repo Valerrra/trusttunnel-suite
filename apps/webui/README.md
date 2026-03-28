@@ -66,7 +66,7 @@ go build -o build/trusttunnel-webui ./cmd/webui
 - `TT_WEBUI_ENDPOINT_VPN_CONFIG` - путь к `vpn.toml`
 - `TT_WEBUI_ENDPOINT_HOSTS_CONFIG` - путь к `hosts.toml`
 - `TT_WEBUI_ENDPOINT_CREDENTIALS_FILE` - путь к `credentials.toml`
-- `TT_WEBUI_ENDPOINT_PUBLIC_ADDRESS` - публичный адрес для server-side export, например `fin.dsinkerii.com`
+- `TT_WEBUI_ENDPOINT_PUBLIC_ADDRESS` - публичный адрес для server-side export
 - `TT_WEBUI_ENDPOINT_PORT` - порт endpoint для live TCP metrics, по умолчанию `443`
 - `TT_WEBUI_CLIENT_STATS_FILE` - путь к snapshot JSON с per-client traffic/connections
 - `TT_WEBUI_METRICS_DISK_PATH` - путь для расчёта disk usage, по умолчанию каталог endpoint
@@ -99,11 +99,11 @@ go build -o build/trusttunnel-webui ./cmd/webui
 - RU/EN переключение интерфейса;
 - роли и более строгий аудит.
 
-## Staging
+## Deployment Templates
 
 В `deploy/systemd/` уже лежат шаблоны:
 
 - `trusttunnel-webui.service`
 - `trusttunnel-webui.env.example`
 
-Их можно использовать как основу для FI после первого reverse-proxy и домена.
+Их можно использовать как основу для Linux deployment через `systemd`.
