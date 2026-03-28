@@ -29,18 +29,16 @@
         {{end}}
       </div>
 
-      <div class="stack-form">
-        <div class="inline-form">
-          <label>
-            <span>Порт</span>
-            <input form="socks5-apply" name="port" type="number" min="1" max="65535" value="{{if .Socks5Runtime.Port}}{{.Socks5Runtime.Port}}{{else}}10808{{end}}">
-          </label>
-          <label>
-            <span>Логин</span>
-            <input form="socks5-apply" name="username" type="text" value="{{.Socks5Runtime.Username}}" placeholder="auto">
-          </label>
-        </div>
-        <label>
+      <div class="single-line-form">
+        <label class="compact-field">
+          <span>Порт</span>
+          <input form="socks5-apply" name="port" type="number" min="1" max="65535" value="{{if .Socks5Runtime.Port}}{{.Socks5Runtime.Port}}{{else}}10808{{end}}">
+        </label>
+        <label class="compact-field">
+          <span>Логин</span>
+          <input form="socks5-apply" name="username" type="text" value="{{.Socks5Runtime.Username}}" placeholder="auto">
+        </label>
+        <label class="compact-field grow">
           <span>Пароль</span>
           <input form="socks5-apply" name="password" type="text" value="{{.Socks5Runtime.Password}}" placeholder="auto">
         </label>
@@ -77,23 +75,14 @@
         {{end}}
       </div>
 
-      <div class="stack-form">
-        <div class="inline-form">
-          <label>
-            <span>Порт</span>
-            <input form="mtproto-apply" name="port" type="number" min="1" max="65535" value="{{if .MTProtoRuntime.Port}}{{.MTProtoRuntime.Port}}{{else}}2443{{end}}">
-          </label>
-          <label class="grow">
-            <span>Fronting domain</span>
-            <input id="mtproto-fronting-input" form="mtproto-apply" name="fronting_domain" type="text" value="{{if .MTProtoRuntime.FrontingDomain}}{{.MTProtoRuntime.FrontingDomain}}{{else}}www.cloudflare.com{{end}}">
-          </label>
-        </div>
-        <label>
-          <span>Secret</span>
-          <div class="inline-secret-row">
-            <input id="mtproto-secret-input" form="mtproto-apply" name="secret" type="text" value="{{.MTProtoRuntime.Secret}}" placeholder="auto-generate">
-            <button class="button compact secondary" type="button" onclick="(async () => { const fronting = document.getElementById('mtproto-fronting-input').value.trim(); if (!fronting) { alert('Укажи fronting domain'); return; } const response = await fetch('/cascades/access/mtproto/generate-secret', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }, body: 'fronting_domain=' + encodeURIComponent(fronting) }); const text = await response.text(); if (!response.ok) { alert(text || 'Не удалось сгенерировать secret'); return; } document.getElementById('mtproto-secret-input').value = text.trim(); })();">Generate</button>
-          </div>
+      <div class="single-line-form">
+        <label class="compact-field">
+          <span>Порт</span>
+          <input form="mtproto-apply" name="port" type="number" min="1" max="65535" value="{{if .MTProtoRuntime.Port}}{{.MTProtoRuntime.Port}}{{else}}2443{{end}}">
+        </label>
+        <label class="compact-field grow">
+          <span>Fronting domain</span>
+          <input form="mtproto-apply" name="fronting_domain" type="text" value="{{if .MTProtoRuntime.FrontingDomain}}{{.MTProtoRuntime.FrontingDomain}}{{else}}www.cloudflare.com{{end}}">
         </label>
         <div class="action-row">
           <form id="mtproto-apply" method="post" action="/cascades/access/mtproto/apply">

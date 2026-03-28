@@ -533,7 +533,7 @@ func (l *Live) DisableSocks5(ctx context.Context) error {
 	return nil
 }
 
-func (l *Live) ApplyMTProto(ctx context.Context, port int, frontingDomain, secret string) error {
+func (l *Live) ApplyMTProto(ctx context.Context, port int, frontingDomain string) error {
 	if l == nil {
 		return fmt.Errorf("live endpoint mode is disabled")
 	}
@@ -551,24 +551,11 @@ func (l *Live) ApplyMTProto(ctx context.Context, port int, frontingDomain, secre
 		return err
 	}
 
-	existing, _ := l.ReadMTProtoRuntimeStatus(ctx)
-	providedSecret := strings.TrimSpace(secret)
-	secret = providedSecret
-	if secret == "" && strings.EqualFold(existing.FrontingDomain, frontingDomain) {
-		secret = existing.Secret
+	generated, err := l.generateMTProtoSecret(ctx, frontingDomain)
+	if err != nil {
+		return err
 	}
-	if providedSecret != "" {
-		if err := l.validateMTProtoSecret(ctx, providedSecret); err != nil {
-			return err
-		}
-		secret = providedSecret
-	} else if strings.TrimSpace(secret) == "" {
-		generated, err := l.generateMTProtoSecret(ctx, frontingDomain)
-		if err != nil {
-			return err
-		}
-		secret = generated
-	}
+	secret := generated
 
 	configPath := filepath.Join(l.cfg.AccessWorkDir, "mtproto.toml")
 	configBody := fmt.Sprintf("secret = %q\nbind-to = %q\n\n[network]\ndns = %q\n", secret, fmt.Sprintf("0.0.0.0:%d", port), "https://1.1.1.1")
@@ -632,20 +619,6 @@ WantedBy=multi-user.target
 	return nil
 }
 
-func (l *Live) ValidateMTProtoSecret(ctx context.Context, secret string) error {
-	if l == nil {
-		return fmt.Errorf("live endpoint mode is disabled")
-	}
-	return l.validateMTProtoSecret(ctx, secret)
-}
-
-func (l *Live) GenerateMTProtoSecret(ctx context.Context, frontingDomain string) (string, error) {
-	if l == nil {
-		return "", fmt.Errorf("live endpoint mode is disabled")
-	}
-	return l.generateMTProtoSecret(ctx, frontingDomain)
-}
-
 func (l *Live) DisableMTProto(ctx context.Context) error {
 	if l == nil {
 		return fmt.Errorf("live endpoint mode is disabled")
@@ -680,20 +653,6 @@ func (l *Live) generateMTProtoSecret(ctx context.Context, frontingDomain string)
 		return "", fmt.Errorf("mtg generate-secret failed: %w: %s", err, strings.TrimSpace(stderr.String()))
 	}
 	return strings.TrimSpace(string(out)), nil
-}
-
-func (l *Live) validateMTProtoSecret(ctx context.Context, secret string) error {
-	configPath := filepath.Join(l.cfg.AccessWorkDir, "mtproto-validate.toml")
-	configBody := fmt.Sprintf("secret = %q\nbind-to = %q\n", strings.TrimSpace(secret), "0.0.0.0:2443")
-	if err := os.WriteFile(configPath, []byte(configBody), 0o600); err != nil {
-		return fmt.Errorf("write mtproto validation config: %w", err)
-	}
-	defer os.Remove(configPath)
-
-	if _, err := l.readMTProtoAccess(ctx, configPath); err != nil {
-		return fmt.Errorf("invalid MTProto secret: %w", err)
-	}
-	return nil
 }
 
 func (l *Live) readMTProtoAccess(ctx context.Context, configPath string) (mtgAccessPayload, error) {
