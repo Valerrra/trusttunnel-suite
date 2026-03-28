@@ -113,10 +113,6 @@ Known runtime issue from user test log:
   - `OS_TUNNEL_LINUX setup_if: Failed to set IPv4 address`
   - `Unable to setup routes for linuxtun session`
 
-Saved log:
-
-- `/mnt/d/VPN/trusttunnel-suite/docs/trustylogs.txt`
-
 Current Linux packaging/runtime behavior:
 
 - Linux portable now includes:
@@ -352,5 +348,3 @@ go build -o build/trusttunnel-webui ./cmd/webui
   - `/mnt/d/VPN/trusttunnel-suite/PROJECT_ARCHITECTURE.md`
 - Main project README:
   - `/mnt/d/VPN/trusttunnel-suite/README.md`
-- Memory note:
-  - `/mnt/d/VPN/trusttunnel-suite/docs/CODEX_MEMORY.md`

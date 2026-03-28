@@ -28,6 +28,9 @@ coverage.out
 # Local data and secrets
 apps/webui/data/
 docs/webui-admin-password.txt
+docs/CODEX_MEMORY.md
+docs/trustylogs.txt
+docs/trusttunnel_client
 *.sqlite
 *.db
 *.db-shm
