@@ -8,6 +8,94 @@
 </div>
 
 <section class="panel">
+  <div class="section-heading">
+    <div>
+      <h2>Runtime Access</h2>
+      <p>Быстрые серверные сервисы поверх текущего узла: отдельный SOCKS5 и MTProto, управляемые напрямую из панели.</p>
+    </div>
+  </div>
+
+  <div class="access-grid">
+    <article class="access-card">
+      <div class="access-card-head">
+        <div>
+          <h3>SOCKS5</h3>
+          <p class="muted">Поднимается через microsocks. Для безопасности логин и пароль генерируются автоматически и сохраняются между перезапусками.</p>
+        </div>
+        {{if .Socks5Runtime.Enabled}}
+        <span class="conn-badge">ACTIVE</span>
+        {{else}}
+        <span class="muted">idle</span>
+        {{end}}
+      </div>
+
+      <form class="inline-form" method="post" action="/cascades/access/socks5/apply">
+        <label>
+          <span>Порт</span>
+          <input name="port" type="number" min="1" max="65535" value="{{if .Socks5Runtime.Port}}{{.Socks5Runtime.Port}}{{else}}10808{{end}}">
+        </label>
+        <button class="button" type="submit">Включить SOCKS5</button>
+      </form>
+
+      {{if .Socks5Runtime.Enabled}}
+      <div class="secret-box">
+        <div><strong>Endpoint:</strong> 0.0.0.0:{{.Socks5Runtime.Port}}</div>
+        <div><strong>Login:</strong> <code>{{.Socks5Runtime.Username}}</code></div>
+        <div><strong>Password:</strong> <code>{{.Socks5Runtime.Password}}</code></div>
+        <div class="client-traffic-meta">Updated {{formatTime .Socks5Runtime.UpdatedAt}}</div>
+      </div>
+      <form method="post" action="/cascades/access/socks5/disable">
+        <button class="button secondary" type="submit">Выключить SOCKS5</button>
+      </form>
+      {{end}}
+    </article>
+
+    <article class="access-card">
+      <div class="access-card-head">
+        <div>
+          <h3>MTProto</h3>
+          <p class="muted">Поднимается через mtg. Порт задаётся вручную, а secret и клиентские ссылки показываются сразу после включения.</p>
+        </div>
+        {{if .MTProtoRuntime.Enabled}}
+        <span class="conn-badge">ACTIVE</span>
+        {{else}}
+        <span class="muted">idle</span>
+        {{end}}
+      </div>
+
+      <form class="stack-form" method="post" action="/cascades/access/mtproto/apply">
+        <div class="inline-form">
+          <label>
+            <span>Порт</span>
+            <input name="port" type="number" min="1" max="65535" value="{{if .MTProtoRuntime.Port}}{{.MTProtoRuntime.Port}}{{else}}2443{{end}}">
+          </label>
+          <label class="grow">
+            <span>Fronting domain</span>
+            <input name="fronting_domain" type="text" value="{{if .MTProtoRuntime.FrontingDomain}}{{.MTProtoRuntime.FrontingDomain}}{{else}}www.cloudflare.com{{end}}">
+          </label>
+        </div>
+        <button class="button" type="submit">Включить MTProto</button>
+      </form>
+
+      {{if .MTProtoRuntime.Enabled}}
+      <div class="secret-box">
+        <div><strong>Endpoint:</strong> 0.0.0.0:{{.MTProtoRuntime.Port}}</div>
+        <div><strong>Fronting:</strong> <code>{{.MTProtoRuntime.FrontingDomain}}</code></div>
+        <div><strong>Secret:</strong> <code>{{.MTProtoRuntime.Secret}}</code></div>
+        {{if .MTProtoRuntime.SecretHex}}<div><strong>Secret hex:</strong> <code>{{.MTProtoRuntime.SecretHex}}</code></div>{{end}}
+        {{if .MTProtoRuntime.TGURL}}<div><strong>tg://</strong> <code>{{.MTProtoRuntime.TGURL}}</code></div>{{end}}
+        {{if .MTProtoRuntime.TMeURL}}<div><strong>t.me</strong> <code>{{.MTProtoRuntime.TMeURL}}</code></div>{{end}}
+        <div class="client-traffic-meta">Updated {{formatTime .MTProtoRuntime.UpdatedAt}}</div>
+      </div>
+      <form method="post" action="/cascades/access/mtproto/disable">
+        <button class="button secondary" type="submit">Выключить MTProto</button>
+      </form>
+      {{end}}
+    </article>
+  </div>
+</section>
+
+<section class="panel">
   {{if .CascadeRuntime.Applied}}
   <div class="alert notice">
     Runtime сейчас направлен через каскад <strong>{{.CascadeRuntime.DisplayName}}</strong> ({{.CascadeRuntime.Hostname}}) через local SOCKS bridge {{.CascadeRuntime.SocksAddress}}.

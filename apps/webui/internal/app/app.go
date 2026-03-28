@@ -32,6 +32,11 @@ type Config struct {
 	CascadeWorkDir              string
 	CascadeStateFile            string
 	CascadeSocksAddress         string
+	AccessWorkDir               string
+	Socks5Binary                string
+	Socks5StateFile             string
+	MTProtoBinary               string
+	MTProtoStateFile            string
 }
 
 func LoadConfig() Config {
@@ -67,6 +72,11 @@ func LoadConfig() Config {
 		CascadeWorkDir:              env("TT_WEBUI_CASCADE_WORK_DIR", filepath.Join(endpointDir, "cascade")),
 		CascadeStateFile:            env("TT_WEBUI_CASCADE_STATE_FILE", filepath.Join(endpointDir, "cascade", "runtime-state.json")),
 		CascadeSocksAddress:         env("TT_WEBUI_CASCADE_SOCKS_ADDRESS", "127.0.0.1:11080"),
+		AccessWorkDir:               env("TT_WEBUI_ACCESS_WORK_DIR", filepath.Join(endpointDir, "access")),
+		Socks5Binary:                env("TT_WEBUI_SOCKS5_BIN", "/usr/bin/microsocks"),
+		Socks5StateFile:             env("TT_WEBUI_SOCKS5_STATE_FILE", filepath.Join(endpointDir, "access", "socks5-state.json")),
+		MTProtoBinary:               env("TT_WEBUI_MTPROTO_BIN", "/usr/local/bin/mtg"),
+		MTProtoStateFile:            env("TT_WEBUI_MTPROTO_STATE_FILE", filepath.Join(endpointDir, "access", "mtproto-state.json")),
 	}
 }
 

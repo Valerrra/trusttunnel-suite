@@ -214,6 +214,32 @@ select {
   font-size: 1.7rem;
 }
 
+.access-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.access-card {
+  background: rgba(255, 251, 242, 0.88);
+  border: 1px solid rgba(215, 202, 183, 0.85);
+  border-radius: 20px;
+  padding: 18px;
+  display: grid;
+  gap: 16px;
+}
+
+.access-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.access-card h3 {
+  margin: 0 0 6px;
+}
+
 .metric-sub {
   color: rgba(245, 239, 228, 0.72);
   line-height: 1.5;
@@ -320,6 +346,51 @@ select {
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 8px;
+}
+
+.inline-form,
+.stack-form {
+  display: grid;
+  gap: 14px;
+}
+
+.inline-form {
+  grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
+  align-items: end;
+}
+
+.inline-form label,
+.stack-form label {
+  display: grid;
+  gap: 8px;
+}
+
+.inline-form label > span,
+.stack-form label > span {
+  font-weight: 600;
+}
+
+.inline-form input,
+.stack-form input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.secret-box {
+  border-radius: 16px;
+  background: rgba(24, 33, 39, 0.06);
+  padding: 14px 16px;
+  display: grid;
+  gap: 8px;
+  line-height: 1.5;
+}
+
+.secret-box code {
+  word-break: break-all;
 }
 
 .table-wrap {
@@ -505,6 +576,7 @@ th {
   }
 
   .stats-grid,
+  .access-grid,
   .metric-grid,
   .two-column,
   .export-grid,
@@ -534,6 +606,12 @@ th {
   .audit-item,
   .kv div,
   .section-heading {
+    flex-direction: column;
+  }
+
+  .inline-form,
+  .access-card-head {
+    grid-template-columns: 1fr;
     flex-direction: column;
   }
 

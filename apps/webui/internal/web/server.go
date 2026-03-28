@@ -65,6 +65,8 @@ type templateData struct {
 	Client          *storage.Client
 	HostMetrics     endpoint.HostMetrics
 	CascadeRuntime  endpoint.CascadeRuntimeStatus
+	Socks5Runtime   endpoint.Socks5RuntimeStatus
+	MTProtoRuntime  endpoint.MTProtoRuntimeStatus
 	ClientStatsPath string
 	EndpointAddr    string
 }
@@ -178,6 +180,10 @@ func (s *Server) Routes() http.Handler {
 	mux.Handle("POST /cascades/{id}", s.authRequired(http.HandlerFunc(s.handleCascadeUpdate)))
 	mux.Handle("POST /cascades/{id}/apply", s.authRequired(http.HandlerFunc(s.handleCascadeApply)))
 	mux.Handle("POST /cascades/disable", s.authRequired(http.HandlerFunc(s.handleCascadeDisable)))
+	mux.Handle("POST /cascades/access/socks5/apply", s.authRequired(http.HandlerFunc(s.handleSocks5Apply)))
+	mux.Handle("POST /cascades/access/socks5/disable", s.authRequired(http.HandlerFunc(s.handleSocks5Disable)))
+	mux.Handle("POST /cascades/access/mtproto/apply", s.authRequired(http.HandlerFunc(s.handleMTProtoApply)))
+	mux.Handle("POST /cascades/access/mtproto/disable", s.authRequired(http.HandlerFunc(s.handleMTProtoDisable)))
 	mux.Handle("POST /cascades/{id}/delete", s.authRequired(http.HandlerFunc(s.handleCascadeDelete)))
 	mux.Handle("GET /clients/new", s.authRequired(http.HandlerFunc(s.handleClientNewPage)))
 	mux.Handle("POST /clients", s.authRequired(http.HandlerFunc(s.handleClientCreate)))
@@ -627,6 +633,8 @@ func (s *Server) handleCascades(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	runtimeStatus, _ := s.endpoint.ReadCascadeRuntimeStatus(r.Context())
+	socks5Status, _ := s.endpoint.ReadSocks5RuntimeStatus(r.Context())
+	mtprotoStatus, _ := s.endpoint.ReadMTProtoRuntimeStatus(r.Context())
 
 	user, _ := s.currentUser(r)
 	s.render(w, "cascades.html", templateData{
@@ -636,6 +644,8 @@ func (s *Server) handleCascades(w http.ResponseWriter, r *http.Request) {
 		CurrentUser:    user,
 		Cascades:       cascades,
 		CascadeRuntime: runtimeStatus,
+		Socks5Runtime:  socks5Status,
+		MTProtoRuntime: mtprotoStatus,
 		Notice:         r.URL.Query().Get("notice"),
 		Error:          r.URL.Query().Get("error"),
 	})
@@ -802,6 +812,89 @@ func (s *Server) handleCascadeDisable(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, "/cascades?notice=Runtime возвращён в direct mode", http.StatusSeeOther)
+}
+
+func (s *Server) handleSocks5Apply(w http.ResponseWriter, r *http.Request) {
+	if s.endpoint == nil {
+		http.Redirect(w, r, "/cascades?error="+urlQueryEscape("Live mode выключен"), http.StatusSeeOther)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Redirect(w, r, "/cascades?error="+urlQueryEscape("Не удалось прочитать форму SOCKS5"), http.StatusSeeOther)
+		return
+	}
+	port, err := strconv.Atoi(strings.TrimSpace(r.FormValue("port")))
+	if err != nil {
+		http.Redirect(w, r, "/cascades?error="+urlQueryEscape("Неверный порт SOCKS5"), http.StatusSeeOther)
+		return
+	}
+	if err := s.endpoint.ApplySocks5(r.Context(), port); err != nil {
+		http.Redirect(w, r, "/cascades?error="+urlQueryEscape(err.Error()), http.StatusSeeOther)
+		return
+	}
+	user, _ := s.currentUser(r)
+	if user != nil {
+		_ = s.store.AppendAudit(user.Username, "socks5-apply", "runtime", fmt.Sprintf("port=%d", port))
+	}
+	http.Redirect(w, r, "/cascades?notice=SOCKS5 включён", http.StatusSeeOther)
+}
+
+func (s *Server) handleSocks5Disable(w http.ResponseWriter, r *http.Request) {
+	if s.endpoint == nil {
+		http.Redirect(w, r, "/cascades?error="+urlQueryEscape("Live mode выключен"), http.StatusSeeOther)
+		return
+	}
+	if err := s.endpoint.DisableSocks5(r.Context()); err != nil {
+		http.Redirect(w, r, "/cascades?error="+urlQueryEscape(err.Error()), http.StatusSeeOther)
+		return
+	}
+	user, _ := s.currentUser(r)
+	if user != nil {
+		_ = s.store.AppendAudit(user.Username, "socks5-disable", "runtime", "stopped")
+	}
+	http.Redirect(w, r, "/cascades?notice=SOCKS5 выключен", http.StatusSeeOther)
+}
+
+func (s *Server) handleMTProtoApply(w http.ResponseWriter, r *http.Request) {
+	if s.endpoint == nil {
+		http.Redirect(w, r, "/cascades?error="+urlQueryEscape("Live mode выключен"), http.StatusSeeOther)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Redirect(w, r, "/cascades?error="+urlQueryEscape("Не удалось прочитать форму MTProto"), http.StatusSeeOther)
+		return
+	}
+	port, err := strconv.Atoi(strings.TrimSpace(r.FormValue("port")))
+	if err != nil {
+		http.Redirect(w, r, "/cascades?error="+urlQueryEscape("Неверный порт MTProto"), http.StatusSeeOther)
+		return
+	}
+	frontingDomain := strings.TrimSpace(r.FormValue("fronting_domain"))
+	if err := s.endpoint.ApplyMTProto(r.Context(), port, frontingDomain); err != nil {
+		http.Redirect(w, r, "/cascades?error="+urlQueryEscape(err.Error()), http.StatusSeeOther)
+		return
+	}
+	user, _ := s.currentUser(r)
+	if user != nil {
+		_ = s.store.AppendAudit(user.Username, "mtproto-apply", "runtime", fmt.Sprintf("port=%d fronting=%s", port, frontingDomain))
+	}
+	http.Redirect(w, r, "/cascades?notice=MTProto включён", http.StatusSeeOther)
+}
+
+func (s *Server) handleMTProtoDisable(w http.ResponseWriter, r *http.Request) {
+	if s.endpoint == nil {
+		http.Redirect(w, r, "/cascades?error="+urlQueryEscape("Live mode выключен"), http.StatusSeeOther)
+		return
+	}
+	if err := s.endpoint.DisableMTProto(r.Context()); err != nil {
+		http.Redirect(w, r, "/cascades?error="+urlQueryEscape(err.Error()), http.StatusSeeOther)
+		return
+	}
+	user, _ := s.currentUser(r)
+	if user != nil {
+		_ = s.store.AppendAudit(user.Username, "mtproto-disable", "runtime", "stopped")
+	}
+	http.Redirect(w, r, "/cascades?notice=MTProto выключен", http.StatusSeeOther)
 }
 
 func (s *Server) handleClientNewPage(w http.ResponseWriter, r *http.Request) {

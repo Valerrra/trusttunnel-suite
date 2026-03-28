@@ -3,6 +3,7 @@ package endpoint
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -56,9 +57,45 @@ type CascadeRuntimeStatus struct {
 	ClientBinPath string    `json:"client_bin_path"`
 }
 
+type Socks5RuntimeStatus struct {
+	Available   bool      `json:"available"`
+	Enabled     bool      `json:"enabled"`
+	ListenHost  string    `json:"listen_host"`
+	Port        int       `json:"port"`
+	Username    string    `json:"username"`
+	Password    string    `json:"password"`
+	ServiceName string    `json:"service_name"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type MTProtoRuntimeStatus struct {
+	Available      bool      `json:"available"`
+	Enabled        bool      `json:"enabled"`
+	ListenHost     string    `json:"listen_host"`
+	Port           int       `json:"port"`
+	Secret         string    `json:"secret"`
+	SecretHex      string    `json:"secret_hex"`
+	FrontingDomain string    `json:"fronting_domain"`
+	ServiceName    string    `json:"service_name"`
+	TGURL          string    `json:"tg_url"`
+	TMeURL         string    `json:"tme_url"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
 type clientStatsSnapshot struct {
 	GeneratedAt time.Time     `json:"generated_at"`
 	Clients     []ClientStats `json:"clients"`
+}
+
+type mtgAccessPayload struct {
+	IPv4 struct {
+		TGURL  string `json:"tg_url"`
+		TMeURL string `json:"tme_url"`
+	} `json:"ipv4"`
+	Secret struct {
+		Hex    string `json:"hex"`
+		Base64 string `json:"base64"`
+	} `json:"secret"`
 }
 
 func NewLive(cfg app.Config) *Live {
@@ -253,6 +290,58 @@ func (l *Live) ReadCascadeRuntimeStatus(ctx context.Context) (CascadeRuntimeStat
 	return status, nil
 }
 
+func (l *Live) ReadSocks5RuntimeStatus(ctx context.Context) (Socks5RuntimeStatus, error) {
+	if l == nil {
+		return Socks5RuntimeStatus{}, nil
+	}
+
+	status := Socks5RuntimeStatus{
+		Available:   true,
+		ListenHost:  "0.0.0.0",
+		ServiceName: "trusttunnel-socks5",
+	}
+
+	raw, err := os.ReadFile(l.cfg.Socks5StateFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return status, nil
+		}
+		return status, err
+	}
+
+	if err := json.Unmarshal(raw, &status); err != nil {
+		return status, err
+	}
+	status.Available = true
+	return status, nil
+}
+
+func (l *Live) ReadMTProtoRuntimeStatus(ctx context.Context) (MTProtoRuntimeStatus, error) {
+	if l == nil {
+		return MTProtoRuntimeStatus{}, nil
+	}
+
+	status := MTProtoRuntimeStatus{
+		Available:   true,
+		ListenHost:  "0.0.0.0",
+		ServiceName: "trusttunnel-mtproto",
+	}
+
+	raw, err := os.ReadFile(l.cfg.MTProtoStateFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return status, nil
+		}
+		return status, err
+	}
+
+	if err := json.Unmarshal(raw, &status); err != nil {
+		return status, err
+	}
+	status.Available = true
+	return status, nil
+}
+
 func (l *Live) ApplyCascade(ctx context.Context, cascade storage.Cascade) error {
 	if l == nil {
 		return fmt.Errorf("live endpoint mode is disabled")
@@ -337,15 +426,241 @@ func (l *Live) DisableCascade(ctx context.Context) error {
 	return nil
 }
 
+func (l *Live) ApplySocks5(ctx context.Context, port int) error {
+	if l == nil {
+		return fmt.Errorf("live endpoint mode is disabled")
+	}
+	if port < 1 || port > 65535 {
+		return fmt.Errorf("invalid SOCKS5 port")
+	}
+	if err := os.MkdirAll(l.cfg.AccessWorkDir, 0o755); err != nil {
+		return fmt.Errorf("create access work dir: %w", err)
+	}
+	if err := l.ensureBinary(l.cfg.Socks5Binary, "microsocks"); err != nil {
+		return err
+	}
+
+	existing, _ := l.ReadSocks5RuntimeStatus(ctx)
+	username := existing.Username
+	password := existing.Password
+	if strings.TrimSpace(username) == "" {
+		username = "tt" + randomAlphaNum(10)
+	}
+	if strings.TrimSpace(password) == "" {
+		password = randomAlphaNum(20)
+	}
+
+	servicePath := "/etc/systemd/system/trusttunnel-socks5.service"
+	serviceBody := fmt.Sprintf(`[Unit]
+Description=TrustTunnel WebUI SOCKS5 Access
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=%s -i 0.0.0.0 -p %d -u %s -P %s
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+`, l.cfg.Socks5Binary, port, username, password)
+
+	if err := os.WriteFile(servicePath, []byte(serviceBody), 0o644); err != nil {
+		return fmt.Errorf("write socks5 systemd unit: %w", err)
+	}
+	if err := l.runSystemctl(ctx, "daemon-reload"); err != nil {
+		return err
+	}
+	if err := l.runSystemctl(ctx, "enable", "trusttunnel-socks5"); err != nil {
+		return err
+	}
+	if err := l.runSystemctl(ctx, "restart", "trusttunnel-socks5"); err != nil {
+		return err
+	}
+
+	status := Socks5RuntimeStatus{
+		Available:   true,
+		Enabled:     true,
+		ListenHost:  "0.0.0.0",
+		Port:        port,
+		Username:    username,
+		Password:    password,
+		ServiceName: "trusttunnel-socks5",
+		UpdatedAt:   time.Now().UTC(),
+	}
+	raw, _ := json.MarshalIndent(status, "", "  ")
+	_ = os.WriteFile(l.cfg.Socks5StateFile, raw, 0o600)
+	return nil
+}
+
+func (l *Live) DisableSocks5(ctx context.Context) error {
+	if l == nil {
+		return fmt.Errorf("live endpoint mode is disabled")
+	}
+	_ = l.runSystemctl(ctx, "stop", "trusttunnel-socks5")
+	_ = l.runSystemctl(ctx, "disable", "trusttunnel-socks5")
+	_ = os.Remove(l.cfg.Socks5StateFile)
+	return nil
+}
+
+func (l *Live) ApplyMTProto(ctx context.Context, port int, frontingDomain string) error {
+	if l == nil {
+		return fmt.Errorf("live endpoint mode is disabled")
+	}
+	if port < 1 || port > 65535 {
+		return fmt.Errorf("invalid MTProto port")
+	}
+	frontingDomain = strings.TrimSpace(frontingDomain)
+	if frontingDomain == "" {
+		return fmt.Errorf("fronting domain is required")
+	}
+	if err := os.MkdirAll(l.cfg.AccessWorkDir, 0o755); err != nil {
+		return fmt.Errorf("create access work dir: %w", err)
+	}
+	if err := l.ensureBinary(l.cfg.MTProtoBinary, "mtg"); err != nil {
+		return err
+	}
+
+	existing, _ := l.ReadMTProtoRuntimeStatus(ctx)
+	secret := existing.Secret
+	if strings.TrimSpace(secret) == "" || !strings.EqualFold(existing.FrontingDomain, frontingDomain) {
+		generated, err := l.generateMTProtoSecret(ctx, frontingDomain)
+		if err != nil {
+			return err
+		}
+		secret = generated
+	}
+
+	configPath := filepath.Join(l.cfg.AccessWorkDir, "mtproto.toml")
+	configBody := fmt.Sprintf("secret = %q\nbind-to = %q\n\n[network]\ndns = %q\n", secret, fmt.Sprintf("0.0.0.0:%d", port), "https://1.1.1.1")
+	if err := os.WriteFile(configPath, []byte(configBody), 0o600); err != nil {
+		return fmt.Errorf("write mtproto config: %w", err)
+	}
+
+	servicePath := "/etc/systemd/system/trusttunnel-mtproto.service"
+	serviceBody := fmt.Sprintf(`[Unit]
+Description=TrustTunnel WebUI MTProto Access
+Documentation=https://github.com/9seconds/mtg
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=%s run %s
+Restart=always
+RestartSec=3
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target
+`, l.cfg.MTProtoBinary, configPath)
+	if err := os.WriteFile(servicePath, []byte(serviceBody), 0o644); err != nil {
+		return fmt.Errorf("write mtproto systemd unit: %w", err)
+	}
+
+	if err := l.runSystemctl(ctx, "daemon-reload"); err != nil {
+		return err
+	}
+	if err := l.runSystemctl(ctx, "enable", "trusttunnel-mtproto"); err != nil {
+		return err
+	}
+	if err := l.runSystemctl(ctx, "restart", "trusttunnel-mtproto"); err != nil {
+		return err
+	}
+
+	status := MTProtoRuntimeStatus{
+		Available:      true,
+		Enabled:        true,
+		ListenHost:     "0.0.0.0",
+		Port:           port,
+		Secret:         secret,
+		FrontingDomain: frontingDomain,
+		ServiceName:    "trusttunnel-mtproto",
+		UpdatedAt:      time.Now().UTC(),
+	}
+	if access, err := l.readMTProtoAccess(ctx, configPath); err == nil {
+		if access.Secret.Base64 != "" {
+			status.Secret = access.Secret.Base64
+		}
+		status.SecretHex = access.Secret.Hex
+		status.TGURL = access.IPv4.TGURL
+		status.TMeURL = access.IPv4.TMeURL
+	}
+
+	raw, _ := json.MarshalIndent(status, "", "  ")
+	_ = os.WriteFile(l.cfg.MTProtoStateFile, raw, 0o600)
+	return nil
+}
+
+func (l *Live) DisableMTProto(ctx context.Context) error {
+	if l == nil {
+		return fmt.Errorf("live endpoint mode is disabled")
+	}
+	_ = l.runSystemctl(ctx, "stop", "trusttunnel-mtproto")
+	_ = l.runSystemctl(ctx, "disable", "trusttunnel-mtproto")
+	_ = os.Remove(l.cfg.MTProtoStateFile)
+	return nil
+}
+
 func (l *Live) ensureClientBinary() error {
-	info, err := os.Stat(l.cfg.EndpointClientBinary)
+	return l.ensureBinary(l.cfg.EndpointClientBinary, "trusttunnel_client")
+}
+
+func (l *Live) ensureBinary(path, label string) error {
+	info, err := os.Stat(path)
 	if err != nil {
-		return fmt.Errorf("trusttunnel_client not found at %s", l.cfg.EndpointClientBinary)
+		return fmt.Errorf("%s not found at %s", label, path)
 	}
 	if info.IsDir() {
-		return fmt.Errorf("TT_WEBUI_ENDPOINT_CLIENT_BIN points to a directory: %s", l.cfg.EndpointClientBinary)
+		return fmt.Errorf("%s path points to a directory: %s", label, path)
 	}
 	return nil
+}
+
+func (l *Live) generateMTProtoSecret(ctx context.Context, frontingDomain string) (string, error) {
+	cmd := exec.CommandContext(ctx, l.cfg.MTProtoBinary, "generate-secret", frontingDomain)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("mtg generate-secret failed: %w: %s", err, strings.TrimSpace(stderr.String()))
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+func (l *Live) readMTProtoAccess(ctx context.Context, configPath string) (mtgAccessPayload, error) {
+	cmd := exec.CommandContext(ctx, l.cfg.MTProtoBinary, "access", configPath)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return mtgAccessPayload{}, fmt.Errorf("mtg access failed: %w: %s", err, strings.TrimSpace(stderr.String()))
+	}
+	var payload mtgAccessPayload
+	if err := json.Unmarshal(out, &payload); err != nil {
+		return mtgAccessPayload{}, err
+	}
+	return payload, nil
+}
+
+func randomAlphaNum(length int) string {
+	const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	if length <= 0 {
+		return ""
+	}
+
+	buf := make([]byte, length)
+	if _, err := rand.Read(buf); err != nil {
+		return strconv.FormatInt(time.Now().UnixNano(), 36)
+	}
+
+	for i := range buf {
+		buf[i] = alphabet[int(buf[i])%len(alphabet)]
+	}
+	return string(buf)
 }
 
 func (l *Live) renderCascadeClientConfig(cascade storage.Cascade) (string, error) {
