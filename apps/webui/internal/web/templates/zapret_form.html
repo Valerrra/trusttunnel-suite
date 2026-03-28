@@ -2,9 +2,48 @@
 <div class="page-header">
   <div>
     <h1>{{if .ZapretForm.ID}}Редактирование Zapret profile{{else}}Новый Zapret profile{{end}}</h1>
-    <p>Профиль стратегии Zapret для split-правил. Можно хранить имя стратегии, путь до скрипта и аргументы запуска.</p>
+    <p>Профиль стратегии Zapret для split-правил. Здесь задаём стратегию, путь до runtime-скрипта и аргументы, а затем связываем профиль с site pack через routing rule.</p>
   </div>
 </div>
+
+<section class="panel">
+  <div class="section-heading">
+    <div>
+      <h2>Runtime status</h2>
+      <p class="muted">Сейчас это подготовка профилей и правил. Реальный server-side apply появится после установки `zapret`.</p>
+    </div>
+  </div>
+  {{if .ZapretRuntime.Installed}}
+  <div class="client-traffic">
+    <span>Found</span>
+    <span class="wrap-anywhere">{{.ZapretRuntime.Binary}}</span>
+  </div>
+  {{else}}
+  <p class="muted">`tpws/nfqws` пока не найден. Можно спокойно настраивать профили заранее: они уже пригодятся для routing policy и дальнейшего runtime apply.</p>
+  {{end}}
+</section>
+
+<section class="panel">
+  <div class="section-heading">
+    <div>
+      <h2>Preset library</h2>
+      <p class="muted">Быстрые стартовые варианты. Нажми нужный preset в Routing или вручную задай свой профиль ниже.</p>
+    </div>
+  </div>
+  <div class="routing-card-grid">
+    {{range .ZapretPresets}}
+    <article class="routing-card compact">
+      <div class="routing-card-head">
+        <strong>{{.DisplayName}}</strong>
+        <span class="pill">{{.StrategyName}}</span>
+      </div>
+      <p class="muted">{{.Summary}}</p>
+      <div class="client-traffic-meta">Для: {{.RecommendedFor}}</div>
+      <div class="client-traffic-meta"><span class="wrap-anywhere">{{.Args}}</span></div>
+    </article>
+    {{end}}
+  </div>
+</section>
 
 <section class="panel">
   <form class="form grid" method="post" action="{{if .ZapretForm.ID}}/routing/zapret/{{.ZapretForm.ID}}{{else}}/routing/zapret{{end}}">
@@ -25,7 +64,7 @@
 
     <label class="full">
       <span>Args</span>
-      <input type="text" name="args" value="{{.ZapretForm.Args}}" placeholder="--discord --youtube">
+      <textarea name="args" rows="3" placeholder="--dpi-desync=fake,fakedsplit --dpi-desync-repeats=6">{{.ZapretForm.Args}}</textarea>
     </label>
 
     <label class="checkbox">

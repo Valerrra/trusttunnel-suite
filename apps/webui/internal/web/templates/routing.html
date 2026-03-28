@@ -2,13 +2,100 @@
 <div class="page-header">
   <div>
     <h1>Routing</h1>
-    <p>Split traffic rules, Zapret profiles и служебные датасеты `geoip/geosite` для будущей маршрутизации на сервере.</p>
+    <p>Split traffic rules, подбор Zapret-стратегий и служебные датасеты `geoip/geosite` для будущей серверной маршрутизации.</p>
   </div>
   <div class="page-header-actions">
     <a class="button secondary" href="/routing/zapret/new">Новый Zapret profile</a>
     <a class="button" href="/routing/rules/new">Новое split-правило</a>
   </div>
 </div>
+
+<section class="panel">
+  <div class="section-heading">
+    <div>
+      <h2>Zapret status</h2>
+      <p class="muted">Пока у нас готов каталог стратегий и site packs. Runtime-применение включим после установки `zapret` на сервер.</p>
+    </div>
+  </div>
+  <div class="routing-status-row">
+    <div class="routing-status-card">
+      <span class="muted">Установка на сервере</span>
+      {{if .ZapretRuntime.Installed}}
+      <strong>Found</strong>
+      <div class="client-traffic-meta">binary: {{.ZapretRuntime.Binary}} · mode: {{.ZapretRuntime.Mode}}</div>
+      <div class="client-traffic-meta">service: {{if .ZapretRuntime.Enabled}}active{{else}}inactive{{end}} · hosts: {{.ZapretRuntime.HostCount}}</div>
+      {{else}}
+      <strong>Not installed</strong>
+      <div class="client-traffic-meta">На FI/NEW2 пока нет `tpws/nfqws`, поэтому `action=zapret` хранится как routing policy и шаблон под будущий runtime.</div>
+      {{end}}
+    </div>
+    <div class="routing-status-card">
+      <span class="muted">Рекомендуемый workflow</span>
+      <strong>Preset → Site pack → Split rule</strong>
+      <div class="client-traffic-meta">Сначала создаём профиль стратегии, затем rule для выбранного набора доменов и позже подключаем реальный server-side runtime.</div>
+      {{if .ZapretRuntime.Installed}}
+      <div class="routing-card-actions">
+        <form method="post" action="/routing/zapret/apply">
+          <button class="button small" type="submit">Apply Zapret</button>
+        </form>
+        <form method="post" action="/routing/zapret/disable">
+          <button class="button secondary small" type="submit">Disable Zapret</button>
+        </form>
+      </div>
+      {{end}}
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="section-heading">
+    <div>
+      <h2>Strategy Presets</h2>
+      <p class="muted">Стартовые профили по мотивам наших локальных zapret-пресетов. Подходят как база для подбора, как в ByeByeDPI.</p>
+    </div>
+    <a class="button secondary" href="/routing/zapret/new">Свой профиль</a>
+  </div>
+  <div class="routing-card-grid">
+    {{range .ZapretPresets}}
+    <article class="routing-card">
+      <div class="routing-card-head">
+        <strong>{{.DisplayName}}</strong>
+        <span class="pill">{{.StrategyName}}</span>
+      </div>
+      <p class="muted">{{.Summary}}</p>
+      <div class="client-traffic-meta">Рекомендуется для: {{.RecommendedFor}}</div>
+      <div class="client-traffic-meta"><span class="wrap-anywhere">{{.Args}}</span></div>
+      <div class="routing-card-actions">
+        <a class="button secondary small" href="/routing/zapret/new?preset={{.Key}}">Создать профиль</a>
+      </div>
+    </article>
+    {{end}}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="section-heading">
+    <div>
+      <h2>Site Packs</h2>
+      <p class="muted">Готовые наборы доменов для точечного заворачивания в Zapret. Основано на публичных test-packs ByeByeDPI.</p>
+    </div>
+  </div>
+  <div class="routing-card-grid">
+    {{range .ZapretSitePacks}}
+    <article class="routing-card">
+      <div class="routing-card-head">
+        <strong>{{.DisplayName}}</strong>
+        <span class="pill">{{.DomainCount}} domains</span>
+      </div>
+      <p class="muted">{{.Description}}</p>
+      <div class="client-traffic-meta">{{.DomainSample}}</div>
+      <div class="routing-card-actions">
+        <a class="button secondary small" href="/routing/rules/new?pack={{.Key}}">Создать split-правило</a>
+      </div>
+    </article>
+    {{end}}
+  </div>
+</section>
 
 <section class="panel">
   <div class="section-heading">

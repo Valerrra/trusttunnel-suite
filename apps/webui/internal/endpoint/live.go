@@ -88,6 +88,14 @@ type MTProtoRuntimeStatus struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
+type ZapretRuntimeStatus struct {
+	Installed bool
+	Binary    string
+	Mode      string
+	Enabled   bool
+	HostCount int
+}
+
 type clientStatsSnapshot struct {
 	GeneratedAt time.Time     `json:"generated_at"`
 	Clients     []ClientStats `json:"clients"`
@@ -367,6 +375,74 @@ func (l *Live) ReadMTProtoRuntimeStatus(ctx context.Context) (MTProtoRuntimeStat
 	}
 	status.Available = true
 	return status, nil
+}
+
+func (l *Live) ReadZapretRuntimeStatus(ctx context.Context) (ZapretRuntimeStatus, error) {
+	if l == nil {
+		return ZapretRuntimeStatus{}, nil
+	}
+
+	candidates := []struct {
+		path string
+		mode string
+	}{
+		{path: "/opt/zapret/nfq/nfqws", mode: "nfqws"},
+		{path: "/opt/zapret/tpws/tpws", mode: "tpws"},
+		{path: "/opt/zapret/nfqws", mode: "nfqws"},
+		{path: "/opt/zapret/tpws", mode: "tpws"},
+		{path: "/usr/local/bin/nfqws", mode: "nfqws"},
+		{path: "/usr/local/bin/tpws", mode: "tpws"},
+		{path: "/usr/bin/nfqws", mode: "nfqws"},
+		{path: "/usr/bin/tpws", mode: "tpws"},
+	}
+
+	for _, candidate := range candidates {
+		info, err := os.Stat(candidate.path)
+		if err == nil && !info.IsDir() {
+			status := ZapretRuntimeStatus{
+				Installed: true,
+				Binary:    candidate.path,
+				Mode:      candidate.mode,
+			}
+			status.Enabled = l.serviceIsActive(ctx, "zapret")
+			status.HostCount = countHostlistEntries("/opt/zapret/ipset/zapret-hosts-user.txt")
+			return status, nil
+		}
+	}
+
+	return ZapretRuntimeStatus{}, nil
+}
+
+func (l *Live) ApplyZapret(ctx context.Context, profile storage.ZapretProfile, domains []string) error {
+	if l == nil {
+		return fmt.Errorf("live endpoint mode is disabled")
+	}
+	if len(domains) == 0 {
+		return fmt.Errorf("нет доменов для hostlist")
+	}
+	if err := os.MkdirAll("/opt/zapret/ipset", 0o755); err != nil {
+		return fmt.Errorf("create zapret ipset dir: %w", err)
+	}
+
+	hostlistPath := "/opt/zapret/ipset/zapret-hosts-user.txt"
+	configPath := "/opt/zapret/config"
+	if err := os.WriteFile(hostlistPath, []byte(strings.Join(domains, "\n")+"\n"), 0o644); err != nil {
+		return fmt.Errorf("write zapret hostlist: %w", err)
+	}
+	if err := l.patchZapretConfig(configPath, profile.Args); err != nil {
+		return err
+	}
+	if err := l.runSystemctl(ctx, "restart", "zapret"); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *Live) DisableZapret(ctx context.Context) error {
+	if l == nil {
+		return fmt.Errorf("live endpoint mode is disabled")
+	}
+	return l.runSystemctl(ctx, "stop", "zapret")
 }
 
 func (l *Live) ApplyCascade(ctx context.Context, cascade storage.Cascade) error {
@@ -792,6 +868,77 @@ func (l *Live) runSystemctl(ctx context.Context, args ...string) error {
 		return fmt.Errorf("systemctl %s failed: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(stderr.String()))
 	}
 	return nil
+}
+
+func (l *Live) serviceIsActive(ctx context.Context, service string) bool {
+	cmd := exec.CommandContext(ctx, "systemctl", "is-active", service)
+	return cmd.Run() == nil
+}
+
+func countHostlistEntries(path string) int {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return 0
+	}
+	count := 0
+	for _, line := range strings.Split(string(raw), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		count++
+	}
+	return count
+}
+
+func (l *Live) patchZapretConfig(path, args string) error {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read zapret config: %w", err)
+	}
+	text := string(raw)
+	replacements := map[string]string{
+		"NFQWS_ENABLE=0":           "NFQWS_ENABLE=1",
+		"NFQWS_ENABLE=1":           "NFQWS_ENABLE=1",
+		"TPWS_ENABLE=1":            "TPWS_ENABLE=0",
+		"TPWS_ENABLE=0":            "TPWS_ENABLE=0",
+		"TPWS_SOCKS_ENABLE=1":      "TPWS_SOCKS_ENABLE=0",
+		"TPWS_SOCKS_ENABLE=0":      "TPWS_SOCKS_ENABLE=0",
+		"MODE_FILTER=none":         "MODE_FILTER=hostlist",
+		"MODE_FILTER=ipset":        "MODE_FILTER=hostlist",
+		"MODE_FILTER=hostlist":     "MODE_FILTER=hostlist",
+		"MODE_FILTER=autohostlist": "MODE_FILTER=hostlist",
+	}
+	for old, newValue := range replacements {
+		text = strings.ReplaceAll(text, old, newValue)
+	}
+	if strings.Contains(text, "#GETLIST=") {
+		text = strings.Replace(text, "#GETLIST=", "GETLIST=get_user.sh", 1)
+	}
+	if !strings.Contains(text, "GETLIST=get_user.sh") {
+		text = strings.TrimRight(text, "\n") + "\nGETLIST=get_user.sh\n"
+	}
+	if strings.TrimSpace(args) != "" {
+		text = replaceShellConfigMultiline(text, "NFQWS_OPT", args)
+	}
+	if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
+		return fmt.Errorf("write zapret config: %w", err)
+	}
+	return nil
+}
+
+func replaceShellConfigMultiline(text, key, value string) string {
+	start := strings.Index(text, key+"=\"")
+	if start < 0 {
+		return strings.TrimRight(text, "\n") + "\n" + key + "=\"\n" + strings.TrimSpace(value) + "\n\"\n"
+	}
+	valueStart := start + len(key+"=\"")
+	end := strings.Index(text[valueStart:], "\n\"")
+	if end < 0 {
+		return text
+	}
+	end += valueStart
+	return text[:start] + key + "=\"\n" + strings.TrimSpace(value) + "\n\"" + text[end+2:]
 }
 
 type cpuSample struct {

@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"slices"
 
 	"github.com/skip2/go-qrcode"
 
@@ -68,8 +69,11 @@ type templateData struct {
 	CascadeRuntime  endpoint.CascadeRuntimeStatus
 	Socks5Runtime   endpoint.Socks5RuntimeStatus
 	MTProtoRuntime  endpoint.MTProtoRuntimeStatus
+	ZapretRuntime   endpoint.ZapretRuntimeStatus
 	ClientStatsPath string
 	EndpointAddr    string
+	ZapretPresets   []zapretPreset
+	ZapretSitePacks []zapretSitePack
 }
 
 type clientFormData struct {
@@ -136,6 +140,28 @@ type zapretFormData struct {
 	CancelURL    string
 }
 
+type zapretPreset struct {
+	Key            string
+	DisplayName    string
+	StrategyName   string
+	ScriptPath     string
+	Args           string
+	Summary        string
+	RecommendedFor string
+}
+
+type zapretSitePack struct {
+	Key          string
+	DisplayName  string
+	Description  string
+	MatchType    string
+	MatchValue   string
+	RuleName     string
+	Notes        string
+	DomainCount  int
+	DomainSample string
+}
+
 func NewServer(cfg app.Config, store *storage.Storage) *Server {
 	srv := &Server{
 		cfg:      cfg,
@@ -163,6 +189,8 @@ func (s *Server) Routes() http.Handler {
 	mux.Handle("GET /dashboard", s.authRequired(http.HandlerFunc(s.handleDashboard)))
 	mux.Handle("GET /clients", s.authRequired(http.HandlerFunc(s.handleClients)))
 	mux.Handle("GET /routing", s.authRequired(http.HandlerFunc(s.handleRouting)))
+	mux.Handle("POST /routing/zapret/apply", s.authRequired(http.HandlerFunc(s.handleZapretApply)))
+	mux.Handle("POST /routing/zapret/disable", s.authRequired(http.HandlerFunc(s.handleZapretDisable)))
 	mux.Handle("GET /routing/rules/new", s.authRequired(http.HandlerFunc(s.handleRoutingRuleNewPage)))
 	mux.Handle("POST /routing/rules", s.authRequired(http.HandlerFunc(s.handleRoutingRuleCreate)))
 	mux.Handle("GET /routing/rules/{id}/edit", s.authRequired(http.HandlerFunc(s.handleRoutingRuleEditPage)))
@@ -361,6 +389,7 @@ func (s *Server) handleRouting(w http.ResponseWriter, r *http.Request) {
 		s.serverError(w, err)
 		return
 	}
+	zapretRuntime, _ := s.endpoint.ReadZapretRuntimeStatus(r.Context())
 
 	user, _ := s.currentUser(r)
 	s.render(w, "routing.html", templateData{
@@ -372,15 +401,123 @@ func (s *Server) handleRouting(w http.ResponseWriter, r *http.Request) {
 		ZapretProfiles:  zapretProfiles,
 		RoutingDatasets: datasets,
 		Cascades:        cascades,
+		ZapretRuntime:   zapretRuntime,
+		ZapretPresets:   builtInZapretPresets(),
+		ZapretSitePacks: builtInZapretSitePacks(),
 		Notice:          r.URL.Query().Get("notice"),
 		Error:           r.URL.Query().Get("error"),
 	})
+}
+
+func (s *Server) handleZapretApply(w http.ResponseWriter, r *http.Request) {
+	if s.endpoint == nil {
+		http.Redirect(w, r, "/routing?error="+urlQueryEscape("Live mode выключен"), http.StatusSeeOther)
+		return
+	}
+	rules, err := s.store.ListRoutingRules(r.Context())
+	if err != nil {
+		s.serverError(w, err)
+		return
+	}
+	profiles, err := s.store.ListZapretProfiles(r.Context())
+	if err != nil {
+		s.serverError(w, err)
+		return
+	}
+
+	profileIndex := make(map[int64]storage.ZapretProfile, len(profiles))
+	for _, item := range profiles {
+		profileIndex[item.ID] = item
+	}
+
+	domainSet := map[string]struct{}{}
+	var selected storage.ZapretProfile
+	var selectedSet bool
+	for _, rule := range rules {
+		if !rule.Enabled || rule.Action != "zapret" || rule.MatchType != "domain" {
+			continue
+		}
+		profile, ok := profileIndex[rule.ZapretProfileID]
+		if !ok {
+			continue
+		}
+		if !selectedSet {
+			selected = profile
+			selectedSet = true
+		} else if selected.ID != profile.ID {
+			http.Redirect(w, r, "/routing?error="+urlQueryEscape("Live apply пока поддерживает только один активный Zapret profile"), http.StatusSeeOther)
+			return
+		}
+		for _, line := range strings.Split(rule.MatchValue, "\n") {
+			for _, field := range strings.FieldsFunc(line, func(r rune) bool {
+				return r == ',' || r == ' ' || r == '\t' || r == '\r'
+			}) {
+				field = strings.TrimSpace(field)
+				if field != "" {
+					domainSet[field] = struct{}{}
+				}
+			}
+		}
+	}
+	if !selectedSet {
+		http.Redirect(w, r, "/routing?error="+urlQueryEscape("Нет enabled domain-правил с action=zapret"), http.StatusSeeOther)
+		return
+	}
+
+	domains := make([]string, 0, len(domainSet))
+	for domain := range domainSet {
+		domains = append(domains, domain)
+	}
+	slices.Sort(domains)
+	if err := s.endpoint.ApplyZapret(r.Context(), selected, domains); err != nil {
+		http.Redirect(w, r, "/routing?error="+urlQueryEscape(err.Error()), http.StatusSeeOther)
+		return
+	}
+	user, _ := s.currentUser(r)
+	if user != nil {
+		_ = s.store.AppendAudit(user.Username, "zapret-apply", selected.DisplayName, fmt.Sprintf("domains=%d", len(domains)))
+	}
+	http.Redirect(w, r, "/routing?notice=Zapret runtime применён", http.StatusSeeOther)
+}
+
+func (s *Server) handleZapretDisable(w http.ResponseWriter, r *http.Request) {
+	if s.endpoint == nil {
+		http.Redirect(w, r, "/routing?error="+urlQueryEscape("Live mode выключен"), http.StatusSeeOther)
+		return
+	}
+	if err := s.endpoint.DisableZapret(r.Context()); err != nil {
+		http.Redirect(w, r, "/routing?error="+urlQueryEscape(err.Error()), http.StatusSeeOther)
+		return
+	}
+	user, _ := s.currentUser(r)
+	if user != nil {
+		_ = s.store.AppendAudit(user.Username, "zapret-disable", "runtime", "stopped zapret service")
+	}
+	http.Redirect(w, r, "/routing?notice=Zapret runtime остановлен", http.StatusSeeOther)
 }
 
 func (s *Server) handleRoutingRuleNewPage(w http.ResponseWriter, r *http.Request) {
 	user, _ := s.currentUser(r)
 	cascades, _ := s.store.ListCascades(r.Context())
 	zapretProfiles, _ := s.store.ListZapretProfiles(r.Context())
+	form := routingRuleFormData{
+		MatchType:   "domain",
+		Action:      "direct",
+		Enabled:     true,
+		Priority:    100,
+		SubmitLabel: "Создать правило",
+		CancelURL:   "/routing",
+	}
+	if pack := findZapretSitePack(strings.TrimSpace(r.URL.Query().Get("pack"))); pack != nil {
+		form.DisplayName = pack.RuleName
+		form.MatchType = pack.MatchType
+		form.MatchValue = pack.MatchValue
+		form.Action = "zapret"
+		form.Notes = pack.Notes
+	}
+	if profileID, err := strconv.ParseInt(strings.TrimSpace(r.URL.Query().Get("zapret_profile_id")), 10, 64); err == nil && profileID > 0 {
+		form.ZapretProfileID = profileID
+	}
 	s.render(w, "routing_rule_form.html", templateData{
 		Title:          "Новое split-правило",
 		Active:         "routing",
@@ -388,14 +525,8 @@ func (s *Server) handleRoutingRuleNewPage(w http.ResponseWriter, r *http.Request
 		CurrentUser:    user,
 		Cascades:       cascades,
 		ZapretProfiles: zapretProfiles,
-		RuleForm: routingRuleFormData{
-			MatchType:   "domain",
-			Action:      "direct",
-			Enabled:     true,
-			Priority:    100,
-			SubmitLabel: "Создать правило",
-			CancelURL:   "/routing",
-		},
+		ZapretSitePacks: builtInZapretSitePacks(),
+		RuleForm:        form,
 	})
 }
 
@@ -507,16 +638,27 @@ func (s *Server) handleRoutingRuleDelete(w http.ResponseWriter, r *http.Request)
 
 func (s *Server) handleZapretNewPage(w http.ResponseWriter, r *http.Request) {
 	user, _ := s.currentUser(r)
+	form := zapretFormData{
+		Enabled:     true,
+		SubmitLabel: "Создать профиль",
+		CancelURL:   "/routing",
+	}
+	if preset := findZapretPreset(strings.TrimSpace(r.URL.Query().Get("preset"))); preset != nil {
+		form.DisplayName = preset.DisplayName
+		form.StrategyName = preset.StrategyName
+		form.ScriptPath = preset.ScriptPath
+		form.Args = preset.Args
+		form.Notes = preset.Summary + ". Рекомендуется для: " + preset.RecommendedFor
+	}
+	zapretRuntime, _ := s.endpoint.ReadZapretRuntimeStatus(r.Context())
 	s.render(w, "zapret_form.html", templateData{
-		Title:       "Новый Zapret profile",
-		Active:      "routing",
-		AppName:     s.cfg.AppName,
-		CurrentUser: user,
-		ZapretForm: zapretFormData{
-			Enabled:     true,
-			SubmitLabel: "Создать профиль",
-			CancelURL:   "/routing",
-		},
+		Title:         "Новый Zapret profile",
+		Active:        "routing",
+		AppName:       s.cfg.AppName,
+		CurrentUser:   user,
+		ZapretRuntime: zapretRuntime,
+		ZapretPresets: builtInZapretPresets(),
+		ZapretForm:    form,
 	})
 }
 
@@ -527,12 +669,14 @@ func (s *Server) handleZapretCreate(w http.ResponseWriter, r *http.Request) {
 		form.SubmitLabel = "Создать профиль"
 		form.CancelURL = "/routing"
 		s.render(w, "zapret_form.html", templateData{
-			Title:       "Новый Zapret profile",
-			Active:      "routing",
-			AppName:     s.cfg.AppName,
-			CurrentUser: user,
-			Error:       err.Error(),
-			ZapretForm:  form,
+			Title:         "Новый Zapret profile",
+			Active:        "routing",
+			AppName:       s.cfg.AppName,
+			CurrentUser:   user,
+			Error:         err.Error(),
+			ZapretRuntime: endpoint.ZapretRuntimeStatus{},
+			ZapretPresets: builtInZapretPresets(),
+			ZapretForm:    form,
 		})
 		return
 	}
@@ -555,12 +699,15 @@ func (s *Server) handleZapretEditPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user, _ := s.currentUser(r)
+	zapretRuntime, _ := s.endpoint.ReadZapretRuntimeStatus(r.Context())
 	s.render(w, "zapret_form.html", templateData{
-		Title:       "Редактирование Zapret profile",
-		Active:      "routing",
-		AppName:     s.cfg.AppName,
-		CurrentUser: user,
-		ZapretForm:  formFromZapretProfile(*item, "Сохранить изменения"),
+		Title:         "Редактирование Zapret profile",
+		Active:        "routing",
+		AppName:       s.cfg.AppName,
+		CurrentUser:   user,
+		ZapretRuntime: zapretRuntime,
+		ZapretPresets: builtInZapretPresets(),
+		ZapretForm:    formFromZapretProfile(*item, "Сохранить изменения"),
 	})
 }
 
@@ -576,12 +723,14 @@ func (s *Server) handleZapretUpdate(w http.ResponseWriter, r *http.Request) {
 		form.SubmitLabel = "Сохранить изменения"
 		form.CancelURL = "/routing"
 		s.render(w, "zapret_form.html", templateData{
-			Title:       "Редактирование Zapret profile",
-			Active:      "routing",
-			AppName:     s.cfg.AppName,
-			CurrentUser: user,
-			Error:       err.Error(),
-			ZapretForm:  form,
+			Title:         "Редактирование Zapret profile",
+			Active:        "routing",
+			AppName:       s.cfg.AppName,
+			CurrentUser:   user,
+			Error:         err.Error(),
+			ZapretRuntime: endpoint.ZapretRuntimeStatus{},
+			ZapretPresets: builtInZapretPresets(),
+			ZapretForm:    form,
 		})
 		return
 	}
@@ -1672,6 +1821,139 @@ func formFromZapretProfile(item storage.ZapretProfile, submitLabel string) zapre
 		SubmitLabel:  submitLabel,
 		CancelURL:    "/routing",
 	}
+}
+
+func builtInZapretPresets() []zapretPreset {
+	return []zapretPreset{
+		{
+			Key:            "general",
+			DisplayName:    "General",
+			StrategyName:   "general",
+			ScriptPath:     "/opt/zapret/general.sh",
+			Args:           "--dpi-desync=multisplit --dpi-desync-split-seqovl=568 --dpi-desync-split-pos=1",
+			Summary:        "Базовая multisplit-стратегия для общего веб-трафика и части GoogleVideo.",
+			RecommendedFor: "YouTube, general web, fallback для mixed traffic",
+		},
+		{
+			Key:            "general-alt",
+			DisplayName:    "General ALT",
+			StrategyName:   "general (ALT)",
+			ScriptPath:     "/opt/zapret/general-alt.sh",
+			Args:           "--dpi-desync=fake,fakedsplit --dpi-desync-repeats=6 --dpi-desync-fooling=ts --dpi-desync-fakedsplit-pattern=0x00",
+			Summary:        "Fake + fakedsplit профиль, ближе к ALT-пресетам из локального набора стратегий.",
+			RecommendedFor: "Discord media, YouTube, более агрессивный DPI bypass",
+		},
+		{
+			Key:            "simple-fake",
+			DisplayName:    "Simple Fake",
+			StrategyName:   "general (SIMPLE FAKE)",
+			ScriptPath:     "/opt/zapret/simple-fake.sh",
+			Args:           "--dpi-desync=fake --dpi-desync-repeats=6",
+			Summary:        "Минимальный fake-профиль, с которого удобно начинать быстрый подбор.",
+			RecommendedFor: "быстрый smoke test, мягкий DPI",
+		},
+		{
+			Key:            "fake-tls",
+			DisplayName:    "Fake TLS",
+			StrategyName:   "general (FAKE TLS)",
+			ScriptPath:     "/opt/zapret/fake-tls.sh",
+			Args:           "--dpi-desync=fake,fakedsplit --dpi-desync-fake-tls=tls_clienthello_www_google_com.bin",
+			Summary:        "Профиль под FakeTLS-подобный сценарий с упором на TLS ClientHello.",
+			RecommendedFor: "YouTube, GoogleVideo, selective TLS-based blocking",
+		},
+	}
+}
+
+func builtInZapretSitePacks() []zapretSitePack {
+	packs := []struct {
+		key         string
+		name        string
+		description string
+		matchType   string
+		ruleName    string
+		notes       string
+		domains     []string
+	}{
+		{
+			key:         "youtube",
+			name:        "YouTube",
+			description: "Основной набор доменов YouTube API, media и assets.",
+			matchType:   "domain",
+			ruleName:    "Zapret: YouTube",
+			notes:       "Подбор Zapret-стратегии для YouTube. Основано на ByeByeDPI proxytest_youtube.sites.",
+			domains:     []string{"youtu.be", "youtube.com", "i.ytimg.com", "youtubei.googleapis.com", "manifest.googlevideo.com", "yt3.googleusercontent.com"},
+		},
+		{
+			key:         "googlevideo",
+			name:        "GoogleVideo",
+			description: "Точечный media-only pack для video CDN.",
+			matchType:   "domain",
+			ruleName:    "Zapret: GoogleVideo",
+			notes:       "Подходит для точечного заворачивания video CDN через Zapret.",
+			domains:     []string{"rr1---sn-4axm-n8vs.googlevideo.com", "rr4---sn-q4flrnsl.googlevideo.com", "rr16---sn-axq7sn76.googlevideo.com", "manifest.googlevideo.com"},
+		},
+		{
+			key:         "discord",
+			name:        "Discord",
+			description: "Discord app, media, attachments и CDN.",
+			matchType:   "domain",
+			ruleName:    "Zapret: Discord",
+			notes:       "Подбор Zapret-стратегии для Discord и вложений. Основано на ByeByeDPI proxytest_discord.sites.",
+			domains:     []string{"discord.com", "discord.gg", "discord.media", "discordapp.com", "discordcdn.com", "stable.dl2.discordapp.net"},
+		},
+		{
+			key:         "social",
+			name:        "Social",
+			description: "Соцсети и мессенджеры из test-пака.",
+			matchType:   "domain",
+			ruleName:    "Zapret: Social",
+			notes:       "Общий набор для социальных сервисов и популярных мессенджеров.",
+			domains:     []string{"facebook.com", "instagram.com", "x.com", "twitter.com", "telegram.org", "whatsapp.com"},
+		},
+	}
+
+	items := make([]zapretSitePack, 0, len(packs))
+	for _, item := range packs {
+		items = append(items, zapretSitePack{
+			Key:          item.key,
+			DisplayName:  item.name,
+			Description:  item.description,
+			MatchType:    item.matchType,
+			MatchValue:   strings.Join(item.domains, "\n"),
+			RuleName:     item.ruleName,
+			Notes:        item.notes,
+			DomainCount:  len(item.domains),
+			DomainSample: strings.Join(item.domains[:minInt(3, len(item.domains))], ", "),
+		})
+	}
+	return items
+}
+
+func findZapretPreset(key string) *zapretPreset {
+	for _, item := range builtInZapretPresets() {
+		if item.Key == key {
+			copy := item
+			return &copy
+		}
+	}
+	return nil
+}
+
+func findZapretSitePack(key string) *zapretSitePack {
+	for _, item := range builtInZapretSitePacks() {
+		if item.Key == key {
+			copy := item
+			return &copy
+		}
+	}
+	return nil
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func splitAddresses(raw string) []string {
