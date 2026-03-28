@@ -88,6 +88,13 @@
             <input form="mtproto-apply" name="fronting_domain" type="text" value="{{if .MTProtoRuntime.FrontingDomain}}{{.MTProtoRuntime.FrontingDomain}}{{else}}www.cloudflare.com{{end}}">
           </label>
         </div>
+        <label>
+          <span>Secret</span>
+          <div class="inline-secret-row">
+            <input id="mtproto-secret-input" form="mtproto-apply" name="secret" type="text" value="{{.MTProtoRuntime.Secret}}" placeholder="auto-generate">
+            <button class="button compact secondary" type="button" onclick="document.getElementById('mtproto-secret-input').value = (self.crypto && crypto.randomUUID ? crypto.randomUUID().replace(/-/g, '') : Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2));">Random</button>
+          </div>
+        </label>
         <div class="action-row">
           <form id="mtproto-apply" method="post" action="/cascades/access/mtproto/apply">
             <button class="button compact {{if .MTProtoRuntime.Enabled}}secondary{{end}}" type="submit" {{if .MTProtoRuntime.Enabled}}disabled{{end}}>Включить MTProto</button>

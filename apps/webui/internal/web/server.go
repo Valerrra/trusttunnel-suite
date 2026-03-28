@@ -872,13 +872,18 @@ func (s *Server) handleMTProtoApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	frontingDomain := strings.TrimSpace(r.FormValue("fronting_domain"))
-	if err := s.endpoint.ApplyMTProto(r.Context(), port, frontingDomain); err != nil {
+	secret := strings.TrimSpace(r.FormValue("secret"))
+	if err := s.endpoint.ApplyMTProto(r.Context(), port, frontingDomain, secret); err != nil {
 		http.Redirect(w, r, "/cascades?error="+urlQueryEscape(err.Error()), http.StatusSeeOther)
 		return
 	}
 	user, _ := s.currentUser(r)
 	if user != nil {
-		_ = s.store.AppendAudit(user.Username, "mtproto-apply", "runtime", fmt.Sprintf("port=%d fronting=%s", port, frontingDomain))
+		secretMode := "generated"
+		if secret != "" {
+			secretMode = "custom"
+		}
+		_ = s.store.AppendAudit(user.Username, "mtproto-apply", "runtime", fmt.Sprintf("port=%d fronting=%s secret=%s", port, frontingDomain, secretMode))
 	}
 	http.Redirect(w, r, "/cascades?notice=MTProto включён", http.StatusSeeOther)
 }

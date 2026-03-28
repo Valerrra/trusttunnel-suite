@@ -533,7 +533,7 @@ func (l *Live) DisableSocks5(ctx context.Context) error {
 	return nil
 }
 
-func (l *Live) ApplyMTProto(ctx context.Context, port int, frontingDomain string) error {
+func (l *Live) ApplyMTProto(ctx context.Context, port int, frontingDomain, secret string) error {
 	if l == nil {
 		return fmt.Errorf("live endpoint mode is disabled")
 	}
@@ -552,7 +552,10 @@ func (l *Live) ApplyMTProto(ctx context.Context, port int, frontingDomain string
 	}
 
 	existing, _ := l.ReadMTProtoRuntimeStatus(ctx)
-	secret := existing.Secret
+	secret = strings.TrimSpace(secret)
+	if secret == "" {
+		secret = existing.Secret
+	}
 	if strings.TrimSpace(secret) == "" || !strings.EqualFold(existing.FrontingDomain, frontingDomain) {
 		generated, err := l.generateMTProtoSecret(ctx, frontingDomain)
 		if err != nil {
