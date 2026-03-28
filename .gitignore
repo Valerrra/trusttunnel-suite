@@ -20,6 +20,7 @@ out/
 # Go
 *.test
 coverage.out
+.cache/
 
 # Logs
 .build-logs/
