@@ -27,6 +27,7 @@ coverage.out
 
 # Local data and secrets
 apps/webui/data/
+docs-private/
 docs/webui-admin-password.txt
 docs/BUILD_RUNBOOK.md
 docs/CODEX_MEMORY.md
