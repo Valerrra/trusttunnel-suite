@@ -1,0 +1,299 @@
+{
+  "@@locale": "ru",
+  "appTitle": "Trusty VPN",
+  "singleInstanceTitle": "Trusty VPN уже запущен",
+  "singleInstanceMessage": "Приложение уже открыто.\nПроверьте системный трей или панель задач.",
+  "singleInstanceClosing": "Это окно закроется через 5 секунд...",
+  "trayShowWindow": "Показать окно",
+  "trayConnect": "Подключить",
+  "trayDisconnect": "Отключить",
+  "trayExit": "Выход",
+  "trayTooltip": "Trusty VPN",
+  "dialogCloseTitle": "Закрыть приложение?",
+  "dialogCloseMessage": "Выйти из приложения или свернуть его в трей?\n\nЕсли VPN подключен, при выходе он будет отключен.",
+  "dialogCloseMinimize": "Свернуть в трей",
+  "dialogCloseExit": "Выйти",
+  "navHome": "Главная",
+  "navSettings": "Настройки",
+  "navSplitTunnel": "Сплит-туннель",
+  "navLogs": "Логи",
+  "navServer": "Сервер",
+  "vpnStatusDisconnected": "Отключено",
+  "vpnStatusConnecting": "Подключение...",
+  "vpnStatusConnected": "Подключено",
+  "vpnStatusDisconnecting": "Отключение...",
+  "vpnStatusError": "Ошибка",
+  "setupStepIdle": "Готово к установке",
+  "setupStepConnecting": "Подключение по SSH...",
+  "setupStepCheckingSystem": "Проверка системы...",
+  "setupStepInstalling": "Установка Trusty...",
+  "setupStepConfiguringServer": "Настройка сервера...",
+  "setupStepObtainingCertificate": "Получение сертификата...",
+  "setupStepStartingService": "Запуск сервиса...",
+  "setupStepVerifying": "Проверка...",
+  "setupStepCompleted": "Установка завершена",
+  "setupStepFailed": "Установка не удалась",
+  "configErrorHostnameEmpty": "Hostname пуст. Проверьте настройки сервера.",
+  "configErrorAddressEmpty": "Адрес пуст. Проверьте настройки сервера.",
+  "configErrorUsernameEmpty": "Имя пользователя пусто. Проверьте настройки сервера.",
+  "homePleaseWait": "Пожалуйста, подождите...",
+  "homeDisconnect": "Отключить",
+  "homeConnect": "Подключить",
+  "homeInfoTitle": "Информация",
+  "homeInfoLine1": "Настройте сервер на вкладке «Настройки»",
+  "homeInfoLineClientWindows": "Убедитесь, что `trusttunnel_client.exe` лежит в каталоге client/",
+  "homeInfoLineClientOther": "Убедитесь, что `trusttunnel_client` лежит в каталоге client/",
+  "homeInfoLine3": "Логи подключения доступны на вкладке «Логи»",
+  "homeError": "Ошибка: {error}",
+  "@homeError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "logsTitle": "Логи подключения",
+  "logsAutoScrollEnabled": "Автопрокрутка включена",
+  "logsAutoScrollDisabled": "Автопрокрутка отключена",
+  "logsCopy": "Копировать логи",
+  "logsClear": "Очистить логи",
+  "logsTotalEntries": "Всего записей: {count}",
+  "@logsTotalEntries": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "logsEmpty": "Логи пусты",
+  "logsConnectToSee": "Подключитесь к VPN, чтобы увидеть логи",
+  "logsClearTitle": "Очистить логи?",
+  "logsClearMessage": "Все записи логов будут удалены. Это действие нельзя отменить.",
+  "logsCopied": "Логи скопированы в буфер обмена",
+  "logsCleared": "Логи очищены",
+  "commonCancel": "Отмена",
+  "commonClear": "Очистить",
+  "commonAdd": "Добавить",
+  "commonSave": "Сохранить",
+  "commonDelete": "Удалить",
+  "languageEnglish": "English",
+  "languageRussian": "Русский",
+  "settingsSectionApp": "Приложение",
+  "settingsLanguage": "Язык",
+  "settingsAutoStartWithWindows": "Автозагрузка при старте Windows",
+  "settingsAutoStartWithWindowsHint": "Добавляет Trusty в автозагрузку Windows.",
+  "settingsAutoConnectOnLaunch": "Автоподключение при старте",
+  "settingsAutoConnectOnLaunchHint": "Автоматически подключать VPN при запуске приложения.",
+  "settingsLaunchMinimized": "Запускать свернутым",
+  "settingsLaunchMinimizedHint": "Стартовать скрытым в трее вместо открытия главного окна.",
+  "settingsWarningConnected": "Отключитесь от VPN перед изменением настроек",
+  "settingsSectionServer": "Сервер",
+  "settingsImportSection": "Быстрый импорт",
+  "settingsImportHint": "Импортируйте TrustTunnel-ссылку `tt://` и заполните настройки автоматически.",
+  "settingsImportFromClipboard": "Импорт из буфера",
+  "settingsImportPasteLink": "Вставить `tt://` ссылку",
+  "settingsImportDialogTitle": "Вставьте TrustTunnel-ссылку",
+  "settingsImportDialogHint": "tt://?AQ...",
+  "settingsImportPreviewTitle": "Предпросмотр импорта",
+  "settingsImportConfirm": "Импортировать",
+  "settingsImported": "Конфигурация импортирована",
+  "settingsImportClipboardEmpty": "В буфере обмена нет `tt://` ссылки",
+  "settingsImportError": "Ошибка импорта: {error}",
+  "@settingsImportError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsHostname": "Hostname",
+  "settingsHostnameError": "Введите hostname",
+  "settingsAddress": "IP-адрес",
+  "settingsAddressError": "Введите IP-адрес",
+  "settingsPort": "Порт",
+  "settingsPortErrorEmpty": "Введите порт",
+  "settingsPortErrorInvalid": "Некорректный порт",
+  "settingsSectionAuth": "Авторизация",
+  "settingsUsername": "Имя пользователя",
+  "settingsUsernameError": "Введите имя пользователя",
+  "settingsPassword": "Пароль",
+  "settingsPasswordError": "Введите пароль",
+  "settingsSectionNetwork": "Сеть",
+  "settingsDns": "DNS-сервер",
+  "settingsDnsError": "Введите DNS-сервер",
+  "settingsProtocol": "Протокол",
+  "settingsLogLevel": "Уровень логов",
+  "settingsSectionAdvanced": "Дополнительно",
+  "settingsIpv6": "Поддержка IPv6",
+  "settingsSkipVerification": "Пропуск проверки сертификата",
+  "settingsAntiDpi": "Anti-DPI",
+  "settingsCustomSni": "Custom SNI (необязательно)",
+  "settingsSave": "Сохранить настройки",
+  "settingsSaved": "Настройки сохранены",
+  "settingsSaveError": "Ошибка сохранения: {error}",
+  "@settingsSaveError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "splitTunnelWarningConnected": "Отключитесь от VPN перед изменением настроек",
+  "splitTunnelVpnMode": "Режим VPN",
+  "splitTunnelModeGeneralTitle": "Весь трафик через VPN",
+  "splitTunnelModeGeneralSubtitle": "Исключения не будут идти через VPN",
+  "splitTunnelModeSelectiveTitle": "Только выбранный трафик через VPN",
+  "splitTunnelModeSelectiveSubtitle": "Через VPN идут только указанные домены и приложения",
+  "splitTunnelDomainsTab": "Домены ({count})",
+  "@splitTunnelDomainsTab": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitTunnelAppsTab": "Приложения ({count})",
+  "@splitTunnelAppsTab": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitTunnelAutoSave": "Настройки сохраняются автоматически",
+  "splitTunnelDomainsExclude": "Домены, которые НЕ будут идти через VPN:",
+  "splitTunnelDomainsInclude": "Домены, которые БУДУТ идти через VPN:",
+  "splitTunnelDomainsHint": "Домены (google.com), IP (8.8.8.8), CIDR (10.0.0.0/8)",
+  "splitTunnelDomainsInputHint": "Введите домен, IP или CIDR",
+  "splitTunnelNoDomains": "Домены не добавлены",
+  "splitTunnelOther": "Другое",
+  "splitTunnelAddToGroup": "Добавить домен в «{groupName}»",
+  "@splitTunnelAddToGroup": {
+    "placeholders": {
+      "groupName": {
+        "type": "String"
+      }
+    }
+  },
+  "splitTunnelEnterDomain": "Введите домен",
+  "splitTunnelRenameGroup": "Переименовать группу",
+  "splitTunnelGroupName": "Название группы",
+  "splitTunnelDeleteGroupTitle": "Удалить группу?",
+  "splitTunnelDeleteGroupMessage": "Группа «{groupName}» и все её домены будут удалены.",
+  "@splitTunnelDeleteGroupMessage": {
+    "placeholders": {
+      "groupName": {
+        "type": "String"
+      }
+    }
+  },
+  "splitTunnelDomainCount": "{count, plural, =0{0 доменов} one{# домен} few{# домена} many{# доменов} other{# домена}}",
+  "@splitTunnelDomainCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitTunnelSuggestionTitle": "Обнаружено в логах: добавить в исключения?",
+  "splitTunnelSuggestionAddToGroup": "Добавить в группу",
+  "splitTunnelSuggestionAddStandalone": "Добавить отдельно",
+  "splitTunnelSuggestionHide": "Скрыть",
+  "splitTunnelDomainAlreadyAdded": "Этот домен уже добавлен",
+  "splitTunnelSaveError": "Ошибка сохранения: {error}",
+  "@splitTunnelSaveError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "splitTunnelAppsExclude": "Приложения, которые НЕ будут использовать VPN:",
+  "splitTunnelAppsInclude": "Приложения, которые БУДУТ использовать VPN:",
+  "splitTunnelSearchApps": "Поиск приложений...",
+  "splitTunnelNoApps": "Приложения не найдены",
+  "splitTunnelSelectedApps": "Выбрано приложений: {count}",
+  "@splitTunnelSelectedApps": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitTunnelToGroup": "В «{groupName}»",
+  "@splitTunnelToGroup": {
+    "placeholders": {
+      "groupName": {
+        "type": "String"
+      }
+    }
+  },
+  "discoveryTitle": "Добавить {domain}",
+  "@discoveryTitle": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      }
+    }
+  },
+  "discoverySearching": "Поиск связанных доменов...",
+  "discoveryRelatedFound": "Найдены связанные домены:",
+  "discoveryGroupName": "Название группы",
+  "discoveryNoRelated": "Связанные домены не найдены.",
+  "discoveryAddStandalone": "Домен будет добавлен отдельно.",
+  "discoveryWithoutGroup": "Без группы",
+  "discoveryAddGroup": "Добавить группу",
+  "serverInfoBanner": "Установка сервера TrustTunnel на удалённый VPS. Нужен VPS с Linux (Ubuntu/Debian), домен и SSH-доступ (root).",
+  "serverSectionSsh": "SSH-подключение",
+  "serverVpsIp": "IP-адрес VPS",
+  "serverVpsIpError": "Введите IP-адрес",
+  "serverSshPort": "SSH-порт",
+  "serverSshUser": "Пользователь",
+  "serverSshPassword": "SSH-пароль",
+  "serverSshPasswordError": "Введите пароль",
+  "serverSshKeyPath": "Путь к SSH-ключу",
+  "serverSshKeyPathError": "Введите путь к ключу",
+  "serverAuthPassword": "Пароль",
+  "serverAuthKey": "SSH-ключ",
+  "serverSectionDomain": "Домен и сертификат",
+  "serverDomain": "Домен",
+  "serverDomainError": "Введите домен",
+  "serverDomainHint": "Домен должен указывать на IP сервера (A-запись в DNS)",
+  "serverEmail": "Email (Let's Encrypt)",
+  "serverEmailError": "Введите email",
+  "serverSectionVpnAccount": "VPN-аккаунт",
+  "serverVpnUsername": "VPN-пользователь",
+  "serverVpnUsernameError": "Введите имя пользователя",
+  "serverVpnPassword": "VPN-пароль",
+  "serverVpnPasswordError": "Введите пароль",
+  "serverGeneratePassword": "Сгенерировать пароль",
+  "serverInstallButton": "Установить сервер",
+  "serverInstalling": "Установка...",
+  "serverInstallLog": "Журнал установки",
+  "serverLogEmpty": "Журнал пуст",
+  "serverInstalled": "Сервер установлен и запущен",
+  "serverSuccessInfo": "Домен: {domain}\nПорт: {port}\nVPN-пользователь: {username}",
+  "@serverSuccessInfo": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      },
+      "port": {
+        "type": "String"
+      },
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "serverApplySettings": "Применить настройки клиента",
+  "serverSettingsApplied": "Настройки клиента обновлены",
+  "serverError": "Ошибка: {error}",
+  "@serverError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  }
+}

@@ -1,0 +1,78 @@
+{{define "base"}}
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{.Title}} · {{.AppName}}</title>
+    <link rel="stylesheet" href="/static/app.css">
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">TT</div>
+          <div>
+            <div class="brand-title">{{.AppName}}</div>
+            <div class="brand-subtitle">MVP panel</div>
+          </div>
+        </div>
+
+        {{if .CurrentUser}}
+        <nav class="nav">
+          <a class="{{if eq .Active "clients"}}active{{end}}" href="/clients">Clients</a>
+          <a class="{{if eq .Active "cascades"}}active{{end}}" href="/cascades">Cascades</a>
+          <a class="{{if eq .Active "routing"}}active{{end}}" href="/routing">Routing</a>
+          <a class="{{if eq .Active "dashboard"}}active{{end}}" href="/dashboard">Dashboard</a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="current-user">Вошли как <strong>{{.CurrentUser.Username}}</strong></div>
+          <form method="post" action="/logout">
+            <button class="button secondary" type="submit">Выйти</button>
+          </form>
+        </div>
+        {{end}}
+      </aside>
+
+      <main class="content">
+        {{if .Error}}
+        <div class="alert error">{{.Error}}</div>
+        {{end}}
+        {{if .Notice}}
+        <div class="alert notice">{{.Notice}}</div>
+        {{end}}
+
+        {{template "content" .}}
+      </main>
+
+      {{if .Audit}}
+      <details class="audit-dock">
+        <summary>Логи панели · {{len .Audit}}</summary>
+        <div class="audit-dock-body">
+          <div class="audit-dock-header">
+            <strong>Последние действия</strong>
+            <span class="muted">Журнал панели закреплён снизу и не мешает основному экрану.</span>
+          </div>
+          <div class="audit-list">
+            {{range .Audit}}
+            <article class="audit-item">
+              <div class="audit-main">
+                <strong>{{.Actor}}</strong>
+                <span>{{.Action}}</span>
+                <span>{{.Target}}</span>
+              </div>
+              <div class="audit-meta">
+                <span>{{formatTime .CreatedAt}}</span>
+                {{if .Details}}<span>{{.Details}}</span>{{end}}
+              </div>
+            </article>
+            {{end}}
+          </div>
+        </div>
+      </details>
+      {{end}}
+    </div>
+  </body>
+</html>
+{{end}}

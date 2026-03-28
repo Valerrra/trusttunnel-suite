@@ -1,0 +1,85 @@
+{{define "content"}}
+<div class="page-header">
+  <div>
+    <h1>{{if .CascadeForm.ID}}Редактирование каскада{{else}}Новый каскад{{end}}</h1>
+    <p>Upstream TrustTunnel-профиль для каскадного маршрута. Поля близки к клиентскому профилю, но предназначены для server-side цепочки.</p>
+  </div>
+</div>
+
+<section class="panel">
+  <form class="form grid" method="post" action="{{if .CascadeForm.ID}}/cascades/{{.CascadeForm.ID}}{{else}}/cascades{{end}}">
+    <label>
+      <span>Имя каскада</span>
+      <input type="text" name="display_name" value="{{.CascadeForm.DisplayName}}" required>
+    </label>
+
+    <label>
+      <span>Hostname</span>
+      <input type="text" name="hostname" value="{{.CascadeForm.Hostname}}" placeholder="upstream.example.com" required>
+    </label>
+
+    <label class="full">
+      <span>Addresses</span>
+      <textarea name="addresses" rows="3" placeholder="203.0.113.20:443&#10;203.0.113.21:443" required>{{.CascadeForm.Addresses}}</textarea>
+    </label>
+
+    <label>
+      <span>Username</span>
+      <input type="text" name="username" value="{{.CascadeForm.Username}}" required>
+    </label>
+
+    <label>
+      <span>Password</span>
+      <input type="text" name="password" value="{{.CascadeForm.Password}}" required>
+    </label>
+
+    <label>
+      <span>Custom SNI</span>
+      <input type="text" name="custom_sni" value="{{.CascadeForm.CustomSNI}}" placeholder="edge.example.com">
+    </label>
+
+    <label>
+      <span>Client random prefix</span>
+      <input type="text" name="client_random_prefix" value="{{.CascadeForm.ClientRandomPrefix}}" placeholder="abcd1234/ffff0000">
+    </label>
+
+    <label>
+      <span>Upstream protocol</span>
+      <select name="upstream_protocol">
+        <option value="http2" {{if eq .CascadeForm.UpstreamProtocol "http2"}}selected{{end}}>http2</option>
+        <option value="http3" {{if eq .CascadeForm.UpstreamProtocol "http3"}}selected{{end}}>http3</option>
+      </select>
+    </label>
+
+    <label class="checkbox">
+      <input type="checkbox" name="enabled" {{if .CascadeForm.Enabled}}checked{{end}}>
+      <span>Каскад включён</span>
+    </label>
+
+    <label class="checkbox">
+      <input type="checkbox" name="skip_verification" {{if .CascadeForm.SkipVerification}}checked{{end}}>
+      <span>Skip certificate verification</span>
+    </label>
+
+    <label class="checkbox">
+      <input type="checkbox" name="anti_dpi" {{if .CascadeForm.AntiDPI}}checked{{end}}>
+      <span>Anti DPI</span>
+    </label>
+
+    <label class="full">
+      <span>Notes</span>
+      <textarea name="notes" rows="3" placeholder="Например: fallback-hop для Discord/YT">{{.CascadeForm.Notes}}</textarea>
+    </label>
+
+    <label class="full">
+      <span>Certificate PEM</span>
+      <textarea name="certificate_pem" rows="7" placeholder="-----BEGIN CERTIFICATE-----">{{.CascadeForm.CertificatePEM}}</textarea>
+    </label>
+
+    <div class="form-actions full">
+      <button class="button" type="submit">{{.CascadeForm.SubmitLabel}}</button>
+      <a class="button secondary" href="{{.CascadeForm.CancelURL}}">Отмена</a>
+    </div>
+  </form>
+</section>
+{{end}}

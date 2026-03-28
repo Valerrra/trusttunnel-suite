@@ -1,0 +1,79 @@
+{{define "content"}}
+<div class="page-header">
+  <div>
+    <h1>Clients</h1>
+    <p>Управление профилями, `tt://` экспортом и серверной статистикой по клиентам, если доступен snapshot.</p>
+  </div>
+  <div class="page-header-actions">
+    <a class="button secondary" href="/dashboard">Открыть Dashboard</a>
+    <a class="button" href="/clients/new">Новый клиент</a>
+  </div>
+</div>
+
+<section class="panel">
+  {{if not .HostMetrics.ClientStatsAvailable}}
+  <div class="alert notice">
+    Per-client traffic и connections появятся, если на сервере будет доступен snapshot-файл:
+    <strong>{{.ClientStatsPath}}</strong>.
+    Пока TrustTunnel endpoint не даёт эти цифры в WebUI напрямую.
+  </div>
+  {{end}}
+
+  {{if .Clients}}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Имя</th>
+          <th>Hostname</th>
+          <th>Address</th>
+          <th>Username</th>
+          <th>Protocol</th>
+          <th>Traffic</th>
+          <th>Conn</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Clients}}
+        <tr>
+          <td>{{.DisplayName}}</td>
+          <td>{{.Hostname}}</td>
+          <td>{{index .Addresses 0}}</td>
+          <td>{{.Username}}</td>
+          <td>{{.UpstreamProtocol}}</td>
+          <td>
+            {{if .StatsAvailable}}
+            <div class="client-traffic">
+              <span>↓ {{formatBytes .TrafficRXBytes}}</span>
+              <span>↑ {{formatBytes .TrafficTXBytes}}</span>
+            </div>
+            <div class="client-traffic-meta">{{formatTime .StatsUpdatedAt}}</div>
+            {{else}}
+            <span class="muted">—</span>
+            {{end}}
+          </td>
+          <td>
+            {{if .StatsAvailable}}
+            <span class="conn-badge">{{.ActiveConnections}}</span>
+            {{else}}
+            <span class="muted">—</span>
+            {{end}}
+          </td>
+          <td class="actions">
+            <a class="button secondary small" href="/clients/{{.ID}}">Экспорт</a>
+            <a class="button secondary small" href="/clients/{{.ID}}/edit">Редактировать</a>
+            <form method="post" action="/clients/{{.ID}}/delete" onsubmit="return confirm('Удалить клиента {{.DisplayName}}?');">
+              <button class="button danger small" type="submit">Удалить</button>
+            </form>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="muted">Клиентов пока нет. Создай первый профиль и WebUI сразу сможет отдать `tt://` и QR.</p>
+  {{end}}
+</section>
+{{end}}

@@ -1,0 +1,64 @@
+{{define "content"}}
+<div class="page-header">
+  <div>
+    <h1>Cascades</h1>
+    <p>Профили для каскадного подключения TrustTunnel → TrustTunnel. Здесь храним upstream-узлы и стратегию подключения для будущего server-side apply.</p>
+  </div>
+  <a class="button" href="/cascades/new">Новый каскад</a>
+</div>
+
+<section class="panel">
+  <div class="alert notice">
+    Это первый этап каскадного режима: панель уже умеет хранить и редактировать upstream TrustTunnel-профили, а следующая итерация применит их к live endpoint-конфигу.
+  </div>
+
+  {{if .Cascades}}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Имя</th>
+          <th>Hostname</th>
+          <th>Address</th>
+          <th>Username</th>
+          <th>Protocol</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Cascades}}
+        <tr>
+          <td>
+            <strong>{{.DisplayName}}</strong>
+            {{if .Notes}}
+            <div class="client-traffic-meta">{{.Notes}}</div>
+            {{end}}
+          </td>
+          <td>{{.Hostname}}</td>
+          <td>{{index .Addresses 0}}</td>
+          <td>{{.Username}}</td>
+          <td>{{.UpstreamProtocol}}</td>
+          <td>
+            {{if .Enabled}}
+            <span class="conn-badge">ON</span>
+            {{else}}
+            <span class="muted">OFF</span>
+            {{end}}
+          </td>
+          <td class="actions">
+            <a class="button secondary small" href="/cascades/{{.ID}}/edit">Редактировать</a>
+            <form method="post" action="/cascades/{{.ID}}/delete" onsubmit="return confirm('Удалить каскад {{.DisplayName}}?');">
+              <button class="button danger small" type="submit">Удалить</button>
+            </form>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="muted">Каскадов пока нет. Добавь первый upstream TrustTunnel-профиль для подготовки к TT → TT цепочке.</p>
+  {{end}}
+</section>
+{{end}}

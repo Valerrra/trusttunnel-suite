@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Trusty
+Comment=TrustTunnel desktop client
+Exec=AppRun
+Icon=trusty
+Terminal=false
+Categories=Network;Security;Utility;
+StartupNotify=true

@@ -1,0 +1,43 @@
+{{define "content"}}
+<div class="page-header">
+  <div>
+    <h1>Экспорт клиента</h1>
+    <p>Профиль <strong>{{.Client.DisplayName}}</strong> готов для desktop и Android импорта.</p>
+  </div>
+  <a class="button secondary" href="/clients/{{.Client.ID}}/edit">Редактировать</a>
+</div>
+
+<section class="panel export-grid">
+  <div>
+    <h2>`tt://` deep-link</h2>
+    <textarea id="deeplink" rows="7" readonly>{{.DeepLink}}</textarea>
+    <div class="form-actions">
+      <button
+        class="button"
+        type="button"
+        onclick="navigator.clipboard.writeText(document.getElementById('deeplink').value)">
+        Скопировать
+      </button>
+      <a class="button secondary" href="/clients/{{.Client.ID}}/tt" target="_blank" rel="noreferrer">Открыть текстом</a>
+    </div>
+
+    <h2>Параметры</h2>
+    <dl class="kv compact">
+      <div><dt>Hostname</dt><dd>{{.Client.Hostname}}</dd></div>
+      <div><dt>Addresses</dt><dd>{{range $index, $value := .Client.Addresses}}{{if $index}}, {{end}}{{$value}}{{end}}</dd></div>
+      <div><dt>Username</dt><dd>{{.Client.Username}}</dd></div>
+      <div><dt>Protocol</dt><dd>{{.Client.UpstreamProtocol}}</dd></div>
+      <div><dt>Anti DPI</dt><dd>{{if .Client.AntiDPI}}enabled{{else}}disabled{{end}}</dd></div>
+    </dl>
+  </div>
+
+  <div class="qr-panel">
+    <h2>QR</h2>
+    <img class="qr-image" src="{{.QRDataURI}}" alt="TrustTunnel QR">
+    <div class="form-actions">
+      <a class="button secondary" href="/clients/{{.Client.ID}}/qr.png" target="_blank" rel="noreferrer">PNG</a>
+      <a class="button secondary" href="/clients">К списку</a>
+    </div>
+  </div>
+</section>
+{{end}}

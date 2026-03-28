@@ -1,0 +1,47 @@
+{{define "content"}}
+<div class="page-header">
+  <div>
+    <h1>{{if .ZapretForm.ID}}Редактирование Zapret profile{{else}}Новый Zapret profile{{end}}</h1>
+    <p>Профиль стратегии Zapret для split-правил. Можно хранить имя стратегии, путь до скрипта и аргументы запуска.</p>
+  </div>
+</div>
+
+<section class="panel">
+  <form class="form grid" method="post" action="{{if .ZapretForm.ID}}/routing/zapret/{{.ZapretForm.ID}}{{else}}/routing/zapret{{end}}">
+    <label>
+      <span>Имя профиля</span>
+      <input type="text" name="display_name" value="{{.ZapretForm.DisplayName}}" required>
+    </label>
+
+    <label>
+      <span>Strategy name</span>
+      <input type="text" name="strategy_name" value="{{.ZapretForm.StrategyName}}" placeholder="general (ALT)" required>
+    </label>
+
+    <label class="full">
+      <span>Script path</span>
+      <input type="text" name="script_path" value="{{.ZapretForm.ScriptPath}}" placeholder="/opt/zapret/general.sh">
+    </label>
+
+    <label class="full">
+      <span>Args</span>
+      <input type="text" name="args" value="{{.ZapretForm.Args}}" placeholder="--discord --youtube">
+    </label>
+
+    <label class="checkbox">
+      <input type="checkbox" name="enabled" {{if .ZapretForm.Enabled}}checked{{end}}>
+      <span>Профиль включён</span>
+    </label>
+
+    <label class="full">
+      <span>Notes</span>
+      <textarea name="notes" rows="4" placeholder="Например: fallback strategy для Discord/YouTube по мотивам local zapret preset">{{.ZapretForm.Notes}}</textarea>
+    </label>
+
+    <div class="form-actions full">
+      <button class="button" type="submit">{{.ZapretForm.SubmitLabel}}</button>
+      <a class="button secondary" href="{{.ZapretForm.CancelURL}}">Отмена</a>
+    </div>
+  </form>
+</section>
+{{end}}

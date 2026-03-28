@@ -1,0 +1,160 @@
+{{define "content"}}
+<div class="page-header">
+  <div>
+    <h1>Routing</h1>
+    <p>Split traffic rules, Zapret profiles и служебные датасеты `geoip/geosite` для будущей маршрутизации на сервере.</p>
+  </div>
+  <div class="page-header-actions">
+    <a class="button secondary" href="/routing/zapret/new">Новый Zapret profile</a>
+    <a class="button" href="/routing/rules/new">Новое split-правило</a>
+  </div>
+</div>
+
+<section class="panel">
+  <div class="section-heading">
+    <div>
+      <h2>Datasets</h2>
+      <p class="muted">Подтяжка `geoip` и `geosite` из внешних источников для match-type правил.</p>
+    </div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Kind</th>
+          <th>Source</th>
+          <th>Local path</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .RoutingDatasets}}
+        <tr>
+          <td><strong>{{.DisplayName}}</strong></td>
+          <td><span class="wrap-anywhere">{{.SourceURL}}</span></td>
+          <td><span class="wrap-anywhere">{{.LocalPath}}</span></td>
+          <td>
+            {{if .Available}}
+            <div class="client-traffic"> <span>Ready</span> </div>
+            <div class="client-traffic-meta">{{formatTime .UpdatedAt}}</div>
+            {{else}}
+            <span class="muted">Not loaded</span>
+            {{end}}
+            {{if .LastError}}
+            <div class="client-traffic-meta">{{.LastError}}</div>
+            {{end}}
+          </td>
+          <td class="actions">
+            <form method="post" action="/routing/datasets/{{.Kind}}/refresh">
+              <button class="button secondary small" type="submit">Refresh</button>
+            </form>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="section-heading">
+    <div>
+      <h2>Zapret Profiles</h2>
+      <p class="muted">Профили стратегий для маршрутов типа `action=zapret`.</p>
+    </div>
+    <a class="button secondary" href="/routing/zapret/new">Добавить профиль</a>
+  </div>
+
+  {{if .ZapretProfiles}}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Strategy</th>
+          <th>Script</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .ZapretProfiles}}
+        <tr>
+          <td>
+            <strong>{{.DisplayName}}</strong>
+            {{if .Notes}}<div class="client-traffic-meta">{{.Notes}}</div>{{end}}
+          </td>
+          <td>{{.StrategyName}}</td>
+          <td><span class="wrap-anywhere">{{.ScriptPath}}</span></td>
+          <td>{{if .Enabled}}<span class="conn-badge">ON</span>{{else}}<span class="muted">OFF</span>{{end}}</td>
+          <td class="actions">
+            <a class="button secondary small" href="/routing/zapret/{{.ID}}/edit">Редактировать</a>
+            <form method="post" action="/routing/zapret/{{.ID}}/delete" onsubmit="return confirm('Удалить Zapret profile {{.DisplayName}}?');">
+              <button class="button danger small" type="submit">Удалить</button>
+            </form>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="muted">Zapret profiles пока нет. Добавь профиль стратегии и затем используй его в split-правиле.</p>
+  {{end}}
+</section>
+
+<section class="panel">
+  <div class="section-heading">
+    <div>
+      <h2>Split Rules</h2>
+      <p class="muted">Правила маршрутизации по `domain`, `cidr`, `geoip`, `geosite` с действиями `direct`, `cascade`, `zapret`.</p>
+    </div>
+    <a class="button" href="/routing/rules/new">Добавить правило</a>
+  </div>
+
+  {{if .RoutingRules}}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Priority</th>
+          <th>Name</th>
+          <th>Match</th>
+          <th>Action</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .RoutingRules}}
+        <tr>
+          <td>{{.Priority}}</td>
+          <td>
+            <strong>{{.DisplayName}}</strong>
+            {{if .Notes}}<div class="client-traffic-meta">{{.Notes}}</div>{{end}}
+          </td>
+          <td>
+            <div class="client-traffic">
+              <span>{{.MatchType}}</span>
+              <span class="wrap-anywhere">{{.MatchValue}}</span>
+            </div>
+          </td>
+          <td>{{.Action}}</td>
+          <td>{{if .Enabled}}<span class="conn-badge">ON</span>{{else}}<span class="muted">OFF</span>{{end}}</td>
+          <td class="actions">
+            <a class="button secondary small" href="/routing/rules/{{.ID}}/edit">Редактировать</a>
+            <form method="post" action="/routing/rules/{{.ID}}/delete" onsubmit="return confirm('Удалить split-правило {{.DisplayName}}?');">
+              <button class="button danger small" type="submit">Удалить</button>
+            </form>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}
+  <p class="muted">Правил пока нет. Добавь первое split-правило и свяжи его с каскадом или Zapret profile.</p>
+  {{end}}
+</section>
+{{end}}

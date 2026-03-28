@@ -1,0 +1,41 @@
+# General
+.DS_Store
+Thumbs.db
+
+# Build outputs
+build/
+dist/
+out/
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub/
+.pub-cache/
+**/flutter_*.log
+**/build/
+
+# Go
+*.test
+coverage.out
+
+# Logs
+.build-logs/
+*.log
+
+# Local data and secrets
+apps/webui/data/
+docs/webui-admin-password.txt
+*.sqlite
+*.db
+*.db-shm
+*.db-wal
+
+# Generated release artifacts
+releases/
+
+# IDE
+.idea/
+.vscode/

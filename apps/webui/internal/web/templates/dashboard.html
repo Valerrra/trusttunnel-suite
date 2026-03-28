@@ -1,0 +1,82 @@
+{{define "content"}}
+<div class="page-header">
+  <div>
+    <h1>Dashboard</h1>
+    <p>Отдельная вкладка с метриками панели, хоста и endpoint-состояния в стиле лёгкого ops-dashboard.</p>
+  </div>
+  <a class="button" href="/clients/new">Новый клиент</a>
+</div>
+
+<section class="stats-grid">
+  <article class="stat-card">
+    <span class="stat-label">Клиенты</span>
+    <strong>{{.Stats.ClientCount}}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Активные сессии</span>
+    <strong>{{.Stats.ActiveTokens}}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Админы</span>
+    <strong>{{.Stats.UserCount}}</strong>
+  </article>
+  <article class="stat-card">
+    <span class="stat-label">Live TCP</span>
+    <strong>{{.HostMetrics.LiveConnections}}</strong>
+  </article>
+</section>
+
+<section class="metric-grid">
+  <article class="metric-card">
+    <span class="stat-label">CPU</span>
+    <strong>{{formatPercent .HostMetrics.CPUPercent}}</strong>
+  </article>
+  <article class="metric-card">
+    <span class="stat-label">RAM</span>
+    <strong>{{formatBytes .HostMetrics.MemoryUsedBytes}}</strong>
+    <span class="metric-sub">из {{formatBytes .HostMetrics.MemoryTotalBytes}}</span>
+  </article>
+  <article class="metric-card">
+    <span class="stat-label">Disk</span>
+    <strong>{{formatBytes .HostMetrics.DiskUsedBytes}}</strong>
+    <span class="metric-sub">из {{formatBytes .HostMetrics.DiskTotalBytes}}</span>
+  </article>
+  <article class="metric-card">
+    <span class="stat-label">RX</span>
+    <strong>{{formatBytes .HostMetrics.TrafficRXBytes}}</strong>
+    <span class="metric-sub">общий входящий трафик хоста</span>
+  </article>
+  <article class="metric-card">
+    <span class="stat-label">TX</span>
+    <strong>{{formatBytes .HostMetrics.TrafficTXBytes}}</strong>
+    <span class="metric-sub">общий исходящий трафик хоста</span>
+  </article>
+  <article class="metric-card">
+    <span class="stat-label">Per-client stats</span>
+    <strong>{{if .HostMetrics.ClientStatsAvailable}}ON{{else}}OFF{{end}}</strong>
+    <span class="metric-sub">{{.ClientStatsPath}}</span>
+  </article>
+</section>
+
+<section class="panel two-column">
+  <div>
+    <h2>Server</h2>
+    <dl class="kv">
+      <div><dt>WebUI bind</dt><dd>{{.ServerAddr}}</dd></div>
+      <div><dt>SQLite</dt><dd>{{.DBPath}}</dd></div>
+      <div><dt>Endpoint host</dt><dd>{{.EndpointAddr}}</dd></div>
+      <div><dt>Хранилище</dt><dd>SQLite для панели + live host metrics с хоста WebUI</dd></div>
+    </dl>
+  </div>
+
+  <div>
+    <h2>Notes</h2>
+    <ul class="simple-list">
+      <li>CPU, RAM, disk и общий RX/TX снимаются с хоста в реальном времени</li>
+      <li>Live TCP connections считаются по порту endpoint</li>
+      <li>Per-client traffic/connections читаются из snapshot-файла, если он есть</li>
+      <li>Логи панели убраны под нижний spoiler и не перегружают основной экран</li>
+    </ul>
+  </div>
+</section>
+{{end}}
