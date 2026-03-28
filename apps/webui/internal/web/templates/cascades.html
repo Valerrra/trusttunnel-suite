@@ -29,34 +29,38 @@
         {{end}}
       </div>
 
-      <form class="stack-form" method="post" action="/cascades/access/socks5/apply">
+      <div class="stack-form">
         <div class="inline-form">
           <label>
             <span>Порт</span>
-            <input name="port" type="number" min="1" max="65535" value="{{if .Socks5Runtime.Port}}{{.Socks5Runtime.Port}}{{else}}10808{{end}}">
+            <input form="socks5-apply" name="port" type="number" min="1" max="65535" value="{{if .Socks5Runtime.Port}}{{.Socks5Runtime.Port}}{{else}}10808{{end}}">
           </label>
           <label>
             <span>Логин</span>
-            <input name="username" type="text" value="{{.Socks5Runtime.Username}}" placeholder="auto">
+            <input form="socks5-apply" name="username" type="text" value="{{.Socks5Runtime.Username}}" placeholder="auto">
           </label>
         </div>
         <label>
           <span>Пароль</span>
-          <input name="password" type="text" value="{{.Socks5Runtime.Password}}" placeholder="auto">
+          <input form="socks5-apply" name="password" type="text" value="{{.Socks5Runtime.Password}}" placeholder="auto">
         </label>
-        <button class="button" type="submit">Включить SOCKS5</button>
-      </form>
-
+        <div class="action-row">
+          <form id="socks5-apply" method="post" action="/cascades/access/socks5/apply">
+            <button class="button compact {{if .Socks5Runtime.Enabled}}secondary{{end}}" type="submit" {{if .Socks5Runtime.Enabled}}disabled{{end}}>Включить SOCKS5</button>
+          </form>
+          <form method="post" action="/cascades/access/socks5/disable">
+            <button class="button compact {{if not .Socks5Runtime.Enabled}}secondary{{end}}" type="submit" {{if not .Socks5Runtime.Enabled}}disabled{{end}}>Выключить SOCKS5</button>
+          </form>
+        </div>
+      </div>
       {{if .Socks5Runtime.Enabled}}
       <div class="secret-box">
         <div><strong>Endpoint:</strong> 0.0.0.0:{{.Socks5Runtime.Port}}</div>
         <div><strong>Login:</strong> <code>{{.Socks5Runtime.Username}}</code></div>
         <div><strong>Password:</strong> <code>{{.Socks5Runtime.Password}}</code></div>
+        {{if .Socks5Runtime.ShareURL}}<div><strong>t.me</strong> <code>{{.Socks5Runtime.ShareURL}}</code></div>{{end}}
         <div class="client-traffic-meta">Updated {{formatTime .Socks5Runtime.UpdatedAt}}</div>
       </div>
-      <form method="post" action="/cascades/access/socks5/disable">
-        <button class="button secondary" type="submit">Выключить SOCKS5</button>
-      </form>
       {{end}}
     </article>
 
@@ -73,20 +77,26 @@
         {{end}}
       </div>
 
-      <form class="stack-form" method="post" action="/cascades/access/mtproto/apply">
+      <div class="stack-form">
         <div class="inline-form">
           <label>
             <span>Порт</span>
-            <input name="port" type="number" min="1" max="65535" value="{{if .MTProtoRuntime.Port}}{{.MTProtoRuntime.Port}}{{else}}2443{{end}}">
+            <input form="mtproto-apply" name="port" type="number" min="1" max="65535" value="{{if .MTProtoRuntime.Port}}{{.MTProtoRuntime.Port}}{{else}}2443{{end}}">
           </label>
           <label class="grow">
             <span>Fronting domain</span>
-            <input name="fronting_domain" type="text" value="{{if .MTProtoRuntime.FrontingDomain}}{{.MTProtoRuntime.FrontingDomain}}{{else}}www.cloudflare.com{{end}}">
+            <input form="mtproto-apply" name="fronting_domain" type="text" value="{{if .MTProtoRuntime.FrontingDomain}}{{.MTProtoRuntime.FrontingDomain}}{{else}}www.cloudflare.com{{end}}">
           </label>
         </div>
-        <button class="button" type="submit">Включить MTProto</button>
-      </form>
-
+        <div class="action-row">
+          <form id="mtproto-apply" method="post" action="/cascades/access/mtproto/apply">
+            <button class="button compact {{if .MTProtoRuntime.Enabled}}secondary{{end}}" type="submit" {{if .MTProtoRuntime.Enabled}}disabled{{end}}>Включить MTProto</button>
+          </form>
+          <form method="post" action="/cascades/access/mtproto/disable">
+            <button class="button compact {{if not .MTProtoRuntime.Enabled}}secondary{{end}}" type="submit" {{if not .MTProtoRuntime.Enabled}}disabled{{end}}>Выключить MTProto</button>
+          </form>
+        </div>
+      </div>
       {{if .MTProtoRuntime.Enabled}}
       <div class="secret-box">
         <div><strong>Endpoint:</strong> 0.0.0.0:{{.MTProtoRuntime.Port}}</div>
@@ -97,9 +107,6 @@
         {{if .MTProtoRuntime.TMeURL}}<div><strong>t.me</strong> <code>{{.MTProtoRuntime.TMeURL}}</code></div>{{end}}
         <div class="client-traffic-meta">Updated {{formatTime .MTProtoRuntime.UpdatedAt}}</div>
       </div>
-      <form method="post" action="/cascades/access/mtproto/disable">
-        <button class="button secondary" type="submit">Выключить MTProto</button>
-      </form>
       {{end}}
     </article>
   </div>

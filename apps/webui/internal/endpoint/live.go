@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -27,11 +28,15 @@ type HostMetrics struct {
 	CPUPercent           float64
 	MemoryUsedBytes      uint64
 	MemoryTotalBytes     uint64
+	SwapUsedBytes        uint64
+	SwapTotalBytes       uint64
 	DiskUsedBytes        uint64
 	DiskTotalBytes       uint64
 	TrafficRXBytes       uint64
 	TrafficTXBytes       uint64
 	LiveConnections      int
+	LiveUDPAssociations  int
+	LoadAverage          string
 	StatsUpdatedAt       time.Time
 	ClientStatsAvailable bool
 }
@@ -64,6 +69,7 @@ type Socks5RuntimeStatus struct {
 	Port        int       `json:"port"`
 	Username    string    `json:"username"`
 	Password    string    `json:"password"`
+	ShareURL    string    `json:"share_url"`
 	ServiceName string    `json:"service_name"`
 	UpdatedAt   time.Time `json:"updated_at"`
 }
@@ -175,12 +181,14 @@ func (l *Live) CollectHostMetrics(ctx context.Context) (HostMetrics, error) {
 	}
 	metrics.CPUPercent = cpuPercent
 
-	memUsed, memTotal, err := readMemoryUsage()
+	memUsed, memTotal, swapUsed, swapTotal, err := readMemoryUsage()
 	if err != nil {
 		return HostMetrics{}, err
 	}
 	metrics.MemoryUsedBytes = memUsed
 	metrics.MemoryTotalBytes = memTotal
+	metrics.SwapUsedBytes = swapUsed
+	metrics.SwapTotalBytes = swapTotal
 
 	diskUsed, diskTotal, err := readDiskUsage(l.cfg.MetricsDiskPath)
 	if err != nil {
@@ -196,6 +204,11 @@ func (l *Live) CollectHostMetrics(ctx context.Context) (HostMetrics, error) {
 	metrics.TrafficRXBytes = rxBytes
 	metrics.TrafficTXBytes = txBytes
 
+	loadAverage, err := readLoadAverage()
+	if err == nil {
+		metrics.LoadAverage = loadAverage
+	}
+
 	clientStats, err := l.ReadClientStats(ctx)
 	if err == nil && len(clientStats) > 0 {
 		metrics.ClientStatsAvailable = true
@@ -207,6 +220,11 @@ func (l *Live) CollectHostMetrics(ctx context.Context) (HostMetrics, error) {
 		if connErr == nil {
 			metrics.LiveConnections = connCount
 		}
+	}
+
+	udpCount, udpErr := countUDPAssociations(ctx, l.cfg.EndpointPort)
+	if udpErr == nil {
+		metrics.LiveUDPAssociations = udpCount
 	}
 
 	return metrics, nil
@@ -311,6 +329,9 @@ func (l *Live) ReadSocks5RuntimeStatus(ctx context.Context) (Socks5RuntimeStatus
 
 	if err := json.Unmarshal(raw, &status); err != nil {
 		return status, err
+	}
+	if status.ShareURL == "" {
+		status.ShareURL = buildTelegramSocksURL(l.cfg.EndpointPublicAddress, status.Port, status.Username, status.Password)
 	}
 	status.Available = true
 	return status, nil
@@ -493,6 +514,7 @@ WantedBy=multi-user.target
 		Port:        port,
 		Username:    username,
 		Password:    password,
+		ShareURL:    buildTelegramSocksURL(l.cfg.EndpointPublicAddress, port, username, password),
 		ServiceName: "trusttunnel-socks5",
 		UpdatedAt:   time.Now().UTC(),
 	}
@@ -833,13 +855,13 @@ func readCPUSample() (cpuSample, error) {
 	return cpuSample{idle: idle, total: total}, nil
 }
 
-func readMemoryUsage() (used uint64, total uint64, err error) {
+func readMemoryUsage() (used uint64, total uint64, swapUsed uint64, swapTotal uint64, err error) {
 	raw, err := os.ReadFile("/proc/meminfo")
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, 0, err
 	}
 
-	var memTotal, memAvailable uint64
+	var memTotal, memAvailable, swapTotalKB, swapFreeKB uint64
 	for _, line := range strings.Split(string(raw), "\n") {
 		fields := strings.Fields(line)
 		if len(fields) < 2 {
@@ -850,12 +872,18 @@ func readMemoryUsage() (used uint64, total uint64, err error) {
 			memTotal, _ = strconv.ParseUint(fields[1], 10, 64)
 		case "MemAvailable:":
 			memAvailable, _ = strconv.ParseUint(fields[1], 10, 64)
+		case "SwapTotal:":
+			swapTotalKB, _ = strconv.ParseUint(fields[1], 10, 64)
+		case "SwapFree:":
+			swapFreeKB, _ = strconv.ParseUint(fields[1], 10, 64)
 		}
 	}
 
 	total = memTotal * 1024
 	used = (memTotal - memAvailable) * 1024
-	return used, total, nil
+	swapTotal = swapTotalKB * 1024
+	swapUsed = (swapTotalKB - swapFreeKB) * 1024
+	return used, total, swapUsed, swapTotal, nil
 }
 
 func readDiskUsage(path string) (used uint64, total uint64, err error) {
@@ -911,6 +939,18 @@ func readNetworkBytes() (rx uint64, tx uint64, err error) {
 	return rx, tx, nil
 }
 
+func readLoadAverage() (string, error) {
+	raw, err := os.ReadFile("/proc/loadavg")
+	if err != nil {
+		return "", err
+	}
+	fields := strings.Fields(string(raw))
+	if len(fields) < 3 {
+		return "", fmt.Errorf("unexpected /proc/loadavg format")
+	}
+	return strings.Join(fields[:3], " | "), nil
+}
+
 func countTCPConnections(ctx context.Context, port int) (int, error) {
 	if port <= 0 {
 		return 0, nil
@@ -933,6 +973,44 @@ func countTCPConnections(ctx context.Context, port int) (int, error) {
 	}
 
 	return count, nil
+}
+
+func countUDPAssociations(ctx context.Context, port int) (int, error) {
+	if port <= 0 {
+		return 0, nil
+	}
+
+	out, err := exec.CommandContext(ctx, "ss", "-Huan").Output()
+	if err != nil {
+		return 0, err
+	}
+
+	var count int
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 5 {
+			continue
+		}
+		if hasPort(fields[4], port) {
+			count++
+		}
+	}
+
+	return count, nil
+}
+
+func buildTelegramSocksURL(server string, port int, username, password string) string {
+	server = strings.TrimSpace(server)
+	if server == "" || port <= 0 || username == "" || password == "" {
+		return ""
+	}
+	return fmt.Sprintf(
+		"https://t.me/socks?server=%s&port=%s&user=%s&pass=%s",
+		url.QueryEscape(server),
+		url.QueryEscape(strconv.Itoa(port)),
+		url.QueryEscape(username),
+		url.QueryEscape(password),
+	)
 }
 
 func hasPort(value string, port int) bool {

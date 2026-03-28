@@ -2,81 +2,105 @@
 <div class="page-header">
   <div>
     <h1>Dashboard</h1>
-    <p>Отдельная вкладка с метриками панели, хоста и endpoint-состояния в стиле лёгкого ops-dashboard.</p>
+    <p>Системные метрики и состояние endpoint в более плотном ops-формате.</p>
   </div>
-  <a class="button" href="/clients/new">Новый клиент</a>
+  <a class="button compact" href="/clients/new">Новый клиент</a>
 </div>
 
-<section class="stats-grid">
-  <article class="stat-card">
-    <span class="stat-label">Клиенты</span>
-    <strong>{{.Stats.ClientCount}}</strong>
-  </article>
-  <article class="stat-card">
-    <span class="stat-label">Активные сессии</span>
-    <strong>{{.Stats.ActiveTokens}}</strong>
-  </article>
-  <article class="stat-card">
-    <span class="stat-label">Админы</span>
-    <strong>{{.Stats.UserCount}}</strong>
-  </article>
-  <article class="stat-card">
-    <span class="stat-label">Live TCP</span>
-    <strong>{{.HostMetrics.LiveConnections}}</strong>
-  </article>
+<section class="panel gauge-panel">
+  <div class="gauge-grid">
+    <article class="gauge-card">
+      <div class="gauge-ring" style="--value: {{formatPercentRaw .HostMetrics.CPUPercent}};">
+        <span>{{formatPercent .HostMetrics.CPUPercent}}</span>
+      </div>
+      <div class="gauge-label">CPU</div>
+    </article>
+    <article class="gauge-card">
+      <div class="gauge-ring" style="--value: {{formatPercentRaw (usagePercent .HostMetrics.MemoryUsedBytes .HostMetrics.MemoryTotalBytes)}};">
+        <span>{{formatPercent (usagePercent .HostMetrics.MemoryUsedBytes .HostMetrics.MemoryTotalBytes)}}</span>
+      </div>
+      <div class="gauge-label">Память: {{formatBytes .HostMetrics.MemoryUsedBytes}} / {{formatBytes .HostMetrics.MemoryTotalBytes}}</div>
+    </article>
+    <article class="gauge-card">
+      <div class="gauge-ring" style="--value: {{formatPercentRaw (usagePercent .HostMetrics.SwapUsedBytes .HostMetrics.SwapTotalBytes)}};">
+        <span>{{formatPercent (usagePercent .HostMetrics.SwapUsedBytes .HostMetrics.SwapTotalBytes)}}</span>
+      </div>
+      <div class="gauge-label">Swap: {{formatBytes .HostMetrics.SwapUsedBytes}} / {{formatBytes .HostMetrics.SwapTotalBytes}}</div>
+    </article>
+    <article class="gauge-card">
+      <div class="gauge-ring" style="--value: {{formatPercentRaw (usagePercent .HostMetrics.DiskUsedBytes .HostMetrics.DiskTotalBytes)}};">
+        <span>{{formatPercent (usagePercent .HostMetrics.DiskUsedBytes .HostMetrics.DiskTotalBytes)}}</span>
+      </div>
+      <div class="gauge-label">Диск: {{formatBytes .HostMetrics.DiskUsedBytes}} / {{formatBytes .HostMetrics.DiskTotalBytes}}</div>
+    </article>
+  </div>
 </section>
 
-<section class="metric-grid">
-  <article class="metric-card">
-    <span class="stat-label">CPU</span>
-    <strong>{{formatPercent .HostMetrics.CPUPercent}}</strong>
+<section class="dashboard-grid">
+  <article class="dashboard-tile">
+    <div class="tile-title">Панель</div>
+    <div class="tile-row">
+      <span>Клиенты</span>
+      <strong>{{.Stats.ClientCount}}</strong>
+    </div>
+    <div class="tile-row">
+      <span>Активные сессии</span>
+      <strong>{{.Stats.ActiveTokens}}</strong>
+    </div>
+    <div class="tile-row">
+      <span>Админы</span>
+      <strong>{{.Stats.UserCount}}</strong>
+    </div>
   </article>
-  <article class="metric-card">
-    <span class="stat-label">RAM</span>
-    <strong>{{formatBytes .HostMetrics.MemoryUsedBytes}}</strong>
-    <span class="metric-sub">из {{formatBytes .HostMetrics.MemoryTotalBytes}}</span>
-  </article>
-  <article class="metric-card">
-    <span class="stat-label">Disk</span>
-    <strong>{{formatBytes .HostMetrics.DiskUsedBytes}}</strong>
-    <span class="metric-sub">из {{formatBytes .HostMetrics.DiskTotalBytes}}</span>
-  </article>
-  <article class="metric-card">
-    <span class="stat-label">RX</span>
-    <strong>{{formatBytes .HostMetrics.TrafficRXBytes}}</strong>
-    <span class="metric-sub">общий входящий трафик хоста</span>
-  </article>
-  <article class="metric-card">
-    <span class="stat-label">TX</span>
-    <strong>{{formatBytes .HostMetrics.TrafficTXBytes}}</strong>
-    <span class="metric-sub">общий исходящий трафик хоста</span>
-  </article>
-  <article class="metric-card">
-    <span class="stat-label">Per-client stats</span>
-    <strong>{{if .HostMetrics.ClientStatsAvailable}}ON{{else}}OFF{{end}}</strong>
-    <span class="metric-sub">{{.ClientStatsPath}}</span>
-  </article>
-</section>
 
-<section class="panel two-column">
-  <div>
-    <h2>Server</h2>
-    <dl class="kv">
-      <div><dt>WebUI bind</dt><dd>{{.ServerAddr}}</dd></div>
-      <div><dt>SQLite</dt><dd>{{.DBPath}}</dd></div>
-      <div><dt>Endpoint host</dt><dd>{{.EndpointAddr}}</dd></div>
-      <div><dt>Хранилище</dt><dd>SQLite для панели + live host metrics с хоста WebUI</dd></div>
-    </dl>
-  </div>
+  <article class="dashboard-tile">
+    <div class="tile-title">Endpoint</div>
+    <div class="tile-row">
+      <span>Host</span>
+      <strong>{{.EndpointAddr}}</strong>
+    </div>
+    <div class="tile-row">
+      <span>TCP connections</span>
+      <strong>{{.HostMetrics.LiveConnections}}</strong>
+    </div>
+    <div class="tile-row">
+      <span>UDP associations</span>
+      <strong>{{.HostMetrics.LiveUDPAssociations}}</strong>
+    </div>
+  </article>
 
-  <div>
-    <h2>Notes</h2>
-    <ul class="simple-list">
-      <li>CPU, RAM, disk и общий RX/TX снимаются с хоста в реальном времени</li>
-      <li>Live TCP connections считаются по порту endpoint</li>
-      <li>Per-client traffic/connections читаются из snapshot-файла, если он есть</li>
-      <li>Логи панели убраны под нижний spoiler и не перегружают основной экран</li>
-    </ul>
-  </div>
+  <article class="dashboard-tile">
+    <div class="tile-title">Нагрузка</div>
+    <div class="tile-copy">System load: {{if .HostMetrics.LoadAverage}}{{.HostMetrics.LoadAverage}}{{else}}—{{end}}</div>
+  </article>
+
+  <article class="dashboard-tile">
+    <div class="tile-title">Хранилище</div>
+    <div class="tile-copy">SQLite: {{.DBPath}}</div>
+    <div class="tile-copy">Bind: {{.ServerAddr}}</div>
+  </article>
+
+  <article class="dashboard-tile">
+    <div class="tile-title">Трафик RX / TX</div>
+    <div class="dual-metric">
+      <div>
+        <span>RX</span>
+        <strong>{{formatBytes .HostMetrics.TrafficRXBytes}}</strong>
+      </div>
+      <div>
+        <span>TX</span>
+        <strong>{{formatBytes .HostMetrics.TrafficTXBytes}}</strong>
+      </div>
+    </div>
+  </article>
+
+  <article class="dashboard-tile">
+    <div class="tile-title">Per-client stats</div>
+    <div class="tile-row">
+      <span>Snapshot</span>
+      <strong>{{if .HostMetrics.ClientStatsAvailable}}ON{{else}}OFF{{end}}</strong>
+    </div>
+    <div class="tile-copy">{{.ClientStatsPath}}</div>
+  </article>
 </section>
 {{end}}

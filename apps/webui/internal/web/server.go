@@ -1236,9 +1236,11 @@ func (s *Server) currentUser(r *http.Request) (*storage.User, error) {
 
 func (s *Server) render(w http.ResponseWriter, page string, data templateData) {
 	tmpl, err := template.New("base").Funcs(template.FuncMap{
-		"formatBytes":   formatBytes,
-		"formatPercent": formatPercent,
-		"formatTime":    formatTime,
+		"formatBytes":      formatBytes,
+		"formatPercent":    formatPercent,
+		"formatTime":       formatTime,
+		"usagePercent":     usagePercent,
+		"formatPercentRaw": formatPercentRaw,
 	}).ParseFS(assets, "templates/base.html", "templates/"+page)
 	if err != nil {
 		s.serverError(w, err)
@@ -1268,6 +1270,17 @@ func formatBytes(value uint64) string {
 
 func formatPercent(value float64) string {
 	return fmt.Sprintf("%.1f%%", value)
+}
+
+func formatPercentRaw(value float64) string {
+	return fmt.Sprintf("%.2f", value)
+}
+
+func usagePercent(used, total uint64) float64 {
+	if total == 0 {
+		return 0
+	}
+	return float64(used) / float64(total) * 100
 }
 
 func formatTime(value time.Time) string {
