@@ -25,7 +25,7 @@ class TrustyAndroidApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        Provider<ConfigService>(create: (_) => ConfigService()),
+        ChangeNotifierProvider<ConfigService>(create: (_) => ConfigService()),
         ChangeNotifierProvider<LocaleService>(
           create: (context) => LocaleService(context.read<ConfigService>()),
         ),

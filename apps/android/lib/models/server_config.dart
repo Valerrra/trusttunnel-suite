@@ -9,6 +9,8 @@ enum VpnMode {
 
 /// Server configuration model for Trusty VPN
 class ServerConfig {
+  final String profileId;
+  final String profileName;
   final String hostname;
   final String address;
   final int port;
@@ -31,6 +33,8 @@ class ServerConfig {
   final List<String> splitTunnelApps;
 
   ServerConfig({
+    required this.profileId,
+    required this.profileName,
     required this.hostname,
     required this.address,
     this.port = 443,
@@ -55,6 +59,8 @@ class ServerConfig {
   /// Users must configure their own server details
   factory ServerConfig.defaultConfig() {
     return ServerConfig(
+      profileId: 'default',
+      profileName: 'Default',
       hostname: 'vpn.example.com',
       address: '127.0.0.1',
       port: 443,
@@ -79,6 +85,8 @@ class ServerConfig {
   /// Convert to JSON for storage
   Map<String, dynamic> toJson() {
     return {
+      'profileId': profileId,
+      'profileName': profileName,
       'hostname': hostname,
       'address': address,
       'port': port,
@@ -102,6 +110,8 @@ class ServerConfig {
 
   /// Create from JSON
   factory ServerConfig.fromJson(Map<String, dynamic> json) {
+    final profileId = json['profileId'] as String? ?? 'default';
+    final profileName = json['profileName'] as String? ?? 'Default';
     // Ensure non-null strings with proper fallbacks
     final hostname = json['hostname'] as String? ?? 'vpn.example.com';
     final address = json['address'] as String? ?? '127.0.0.1';
@@ -117,6 +127,8 @@ class ServerConfig {
     final certificate = json['certificate'] as String? ?? '';
 
     return ServerConfig(
+      profileId: profileId,
+      profileName: profileName,
       hostname: hostname,
       address: address,
       port: json['port'] as int? ?? 443,
@@ -294,6 +306,8 @@ change_system_dns = true
 
   /// Create a copy with updated fields
   ServerConfig copyWith({
+    String? profileId,
+    String? profileName,
     String? hostname,
     String? address,
     int? port,
@@ -314,6 +328,8 @@ change_system_dns = true
     List<String>? splitTunnelApps,
   }) {
     return ServerConfig(
+      profileId: profileId ?? this.profileId,
+      profileName: profileName ?? this.profileName,
       hostname: hostname ?? this.hostname,
       address: address ?? this.address,
       port: port ?? this.port,

@@ -28,20 +28,38 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen>
   bool _isLoading = true;
   bool _isLoadingApps = true;
   String _appSearchQuery = '';
+  ConfigService? _configService;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    _loadConfig();
     _loadInstalledApps();
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final configService = context.read<ConfigService>();
+    if (_configService == configService) {
+      return;
+    }
+    _configService?.removeListener(_handleConfigChanged);
+    _configService = configService;
+    _configService!.addListener(_handleConfigChanged);
+    _loadConfig();
+  }
+
+  @override
   void dispose() {
+    _configService?.removeListener(_handleConfigChanged);
     _tabController.dispose();
     _domainController.dispose();
     super.dispose();
+  }
+
+  void _handleConfigChanged() {
+    _loadConfig();
   }
 
   Future<void> _loadConfig() async {
@@ -178,48 +196,11 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen>
 
         return Column(
           children: [
-            Expanded(
-              flex: 0,
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (isConnected) _buildWarningCard(context),
-                      Text(
-                        tr.splitTunnelVpnMode,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildSummaryCard(context),
-                      const SizedBox(height: 12),
-                      _buildModeCard(
-                        context,
-                        title: tr.splitTunnelModeGeneralTitle,
-                        subtitle: tr.splitTunnelModeGeneralSubtitle,
-                        icon: Icons.shield_outlined,
-                        isSelected: _vpnMode == VpnMode.general,
-                        enabled: !isConnected,
-                        onTap: () => _setVpnMode(VpnMode.general),
-                      ),
-                      const SizedBox(height: 10),
-                      _buildModeCard(
-                        context,
-                        title: tr.splitTunnelModeSelectiveTitle,
-                        subtitle: tr.splitTunnelModeSelectiveSubtitle,
-                        icon: Icons.filter_alt_outlined,
-                        isSelected: _vpnMode == VpnMode.selective,
-                        enabled: !isConnected,
-                        onTap: () => _setVpnMode(VpnMode.selective),
-                      ),
-                    ],
-                  ),
-                ),
+            if (isConnected)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: _buildWarningCard(context),
               ),
-            ),
             TabBar(
               controller: _tabController,
               tabs: [
@@ -239,6 +220,40 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen>
                 children: [
                   _buildDomainsTab(context, isConnected),
                   _buildAppsTab(context, isConnected),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    tr.splitTunnelVpnMode,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildModeCard(
+                    context,
+                    title: tr.splitTunnelModeGeneralTitle,
+                    subtitle: tr.splitTunnelModeGeneralSubtitle,
+                    icon: Icons.shield_outlined,
+                    isSelected: _vpnMode == VpnMode.general,
+                    enabled: !isConnected,
+                    onTap: () => _setVpnMode(VpnMode.general),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildModeCard(
+                    context,
+                    title: tr.splitTunnelModeSelectiveTitle,
+                    subtitle: tr.splitTunnelModeSelectiveSubtitle,
+                    icon: Icons.filter_alt_outlined,
+                    isSelected: _vpnMode == VpnMode.selective,
+                    enabled: !isConnected,
+                    onTap: () => _setVpnMode(VpnMode.selective),
+                  ),
                 ],
               ),
             ),
@@ -268,104 +283,8 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen>
     );
   }
 
-  Widget _buildSummaryCard(BuildContext context) {
-    final theme = Theme.of(context);
-    final tr = AppLocalizations.of(context)!;
-    final modeTitle = _vpnMode == VpnMode.general
-        ? tr.splitTunnelModeGeneralTitle
-        : tr.splitTunnelModeSelectiveTitle;
-    final modeSubtitle = _vpnMode == VpnMode.general
-        ? tr.splitTunnelModeGeneralSubtitle
-        : tr.splitTunnelModeSelectiveSubtitle;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.65),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.route,
-                color: theme.colorScheme.onPrimaryContainer,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  modeTitle,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: theme.colorScheme.onPrimaryContainer,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            modeSubtitle,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onPrimaryContainer,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _buildSummaryChip(
-                context,
-                icon: Icons.language,
-                label: tr.splitTunnelDomainsTab(_domains.length),
-              ),
-              _buildSummaryChip(
-                context,
-                icon: Icons.apps,
-                label: tr.splitTunnelAppsTab(_apps.length),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSummaryChip(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-  }) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: theme.colorScheme.onSurface),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildWarningCard(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.orange.withValues(alpha: 0.10),
@@ -476,26 +395,37 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen>
             ),
           ),
           const SizedBox(height: 12),
+          TextField(
+            controller: _domainController,
+            enabled: !isConnected,
+            minLines: 2,
+            maxLines: 3,
+            textInputAction: TextInputAction.done,
+            decoration: InputDecoration(
+              hintText: tr.splitTunnelDomainsInputHint,
+              prefixIcon: const Padding(
+                padding: EdgeInsets.only(bottom: 28),
+                child: Icon(Icons.add_link, size: 22),
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 18,
+              ),
+            ),
+            onSubmitted: (_) => _addDomain(),
+          ),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: _domainController,
-                  enabled: !isConnected,
-                  decoration: InputDecoration(
-                    hintText: tr.splitTunnelDomainsInputHint,
-                    prefixIcon: const Icon(Icons.add_link, size: 20),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onSubmitted: (_) => _addDomain(),
+                child: FilledButton.icon(
+                  onPressed: isConnected ? null : _addDomain,
+                  icon: const Icon(Icons.add),
+                  label: Text(tr.splitTunnelEnterDomain),
                 ),
-              ),
-              const SizedBox(width: 8),
-              IconButton.filled(
-                onPressed: isConnected ? null : _addDomain,
-                icon: const Icon(Icons.add),
               ),
             ],
           ),
@@ -526,9 +456,13 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen>
                     itemBuilder: (context, index) {
                       final domain = _domains[index];
                       return Card(
-                        margin: const EdgeInsets.only(bottom: 6),
+                        margin: const EdgeInsets.only(bottom: 10),
                         child: ListTile(
-                          leading: Icon(_domainIcon(domain), size: 20),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 6,
+                          ),
+                          leading: Icon(_domainIcon(domain), size: 24),
                           title: Text(domain),
                           trailing: IconButton(
                             onPressed: isConnected
@@ -566,14 +500,47 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen>
                 ? tr.splitTunnelAppsExclude
                 : tr.splitTunnelAppsInclude,
           ),
+          const SizedBox(height: 8),
+          if (_apps.isNotEmpty)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      tr.splitTunnelSelectedApps(_apps.length),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           const SizedBox(height: 12),
           TextField(
             enabled: !isConnected,
             decoration: InputDecoration(
               hintText: tr.splitTunnelSearchApps,
-              prefixIcon: const Icon(Icons.search, size: 20),
+              prefixIcon: const Icon(Icons.search, size: 22),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 18,
               ),
             ),
             onChanged: (value) {
@@ -613,17 +580,22 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen>
                       final isSelected = _apps.contains(app.packageName);
 
                       return Card(
-                        margin: const EdgeInsets.only(bottom: 6),
+                        margin: const EdgeInsets.only(bottom: 10),
                         child: CheckboxListTile(
                           value: isSelected,
                           onChanged: isConnected
                               ? null
                               : (_) => _toggleApp(app.packageName),
-                          secondary: const Icon(Icons.apps, size: 20),
+                          secondary: const Icon(Icons.apps, size: 24),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
                           title: Text(
                             app.name.isNotEmpty
                                 ? app.name
                                 : app.packageName,
+                            style: Theme.of(context).textTheme.titleMedium,
                           ),
                           subtitle: Text(app.packageName),
                         ),
@@ -631,31 +603,6 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen>
                     },
                   ),
           ),
-          if (_apps.isNotEmpty)
-            Container(
-              margin: const EdgeInsets.only(top: 8),
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 18,
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    tr.splitTunnelSelectedApps(_apps.length),
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                ],
-              ),
-            ),
         ],
       ),
     );

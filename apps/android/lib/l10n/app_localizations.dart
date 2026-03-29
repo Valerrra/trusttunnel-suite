@@ -332,6 +332,42 @@ abstract class AppLocalizations {
   /// **'Connect'**
   String get homeConnect;
 
+  /// No description provided for @homeProfilesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Profiles'**
+  String get homeProfilesTitle;
+
+  /// No description provided for @homeProfileAntiDpi.
+  ///
+  /// In en, this message translates to:
+  /// **'Anti-DPI'**
+  String get homeProfileAntiDpi;
+
+  /// No description provided for @homeProfileInsecure.
+  ///
+  /// In en, this message translates to:
+  /// **'Insecure'**
+  String get homeProfileInsecure;
+
+  /// No description provided for @homeDeleteProfileTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete profile?'**
+  String get homeDeleteProfileTitle;
+
+  /// No description provided for @homeDeleteProfileMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The profile \"{profileName}\" will be removed from the app.'**
+  String homeDeleteProfileMessage(String profileName);
+
+  /// No description provided for @homeDeleteProfileConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get homeDeleteProfileConfirm;
+
   /// No description provided for @homeInfoTitle.
   ///
   /// In en, this message translates to:

@@ -39,6 +39,19 @@
   "homePleaseWait": "Пожалуйста, подождите...",
   "homeDisconnect": "Отключить",
   "homeConnect": "Подключить",
+  "homeProfilesTitle": "Профили",
+  "homeProfileAntiDpi": "Anti-DPI",
+  "homeProfileInsecure": "Без проверки",
+  "homeDeleteProfileTitle": "Удалить профиль?",
+  "homeDeleteProfileMessage": "Профиль «{profileName}» будет удалён из приложения.",
+  "@homeDeleteProfileMessage": {
+    "placeholders": {
+      "profileName": {
+        "type": "String"
+      }
+    }
+  },
+  "homeDeleteProfileConfirm": "Удалить",
   "homeInfoTitle": "Информация",
   "homeInfoLine1": "Настройте сервер на вкладке «Настройки»",
   "homeInfoLineClientWindows": "Убедитесь, что `trusttunnel_client.exe` лежит в каталоге client/",

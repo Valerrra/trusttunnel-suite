@@ -131,6 +131,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeConnect => 'Connect';
 
   @override
+  String get homeProfilesTitle => 'Profiles';
+
+  @override
+  String get homeProfileAntiDpi => 'Anti-DPI';
+
+  @override
+  String get homeProfileInsecure => 'Insecure';
+
+  @override
+  String get homeDeleteProfileTitle => 'Delete profile?';
+
+  @override
+  String homeDeleteProfileMessage(String profileName) {
+    return 'The profile \"$profileName\" will be removed from the app.';
+  }
+
+  @override
+  String get homeDeleteProfileConfirm => 'Delete';
+
+  @override
   String get homeInfoTitle => 'Information';
 
   @override

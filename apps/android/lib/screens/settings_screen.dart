@@ -41,6 +41,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _upstreamProtocol = 'http2';
   String _logLevel = 'info';
   ServerConfig _currentConfig = ServerConfig.defaultConfig();
+  ConfigService? _configService;
 
   @override
   void initState() {
@@ -52,6 +53,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _passwordController = TextEditingController();
     _dnsController = TextEditingController();
     _customSniController = TextEditingController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final configService = context.read<ConfigService>();
+    if (_configService == configService) {
+      return;
+    }
+    _configService?.removeListener(_handleConfigChanged);
+    _configService = configService;
+    _configService!.addListener(_handleConfigChanged);
     _loadConfig();
   }
 
@@ -66,6 +79,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _applyConfigToForm(config);
       _isLoading = false;
     });
+  }
+
+  void _handleConfigChanged() {
+    _loadConfig();
   }
 
   void _applyConfigToForm(ServerConfig config) {
@@ -139,26 +156,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _importDeepLink(text);
   }
 
-  Future<void> _showPasteImportDialog() async {
-    final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
-    final clipboardText = clipboardData?.text?.trim() ?? '';
-    if (!mounted) {
-      return;
-    }
-
-    final deepLink = await TrustTunnelImportFlow.promptForDeepLink(
-      context,
-      initialValue: _deepLinkService.looksLikeDeepLink(clipboardText)
-          ? clipboardText
-          : '',
-    );
-    if (deepLink == null || deepLink.isEmpty) {
-      return;
-    }
-
-    await _importDeepLink(deepLink);
-  }
-
   Future<void> _scanQrImport() async {
     final deepLink = await QrScannerScreen.show(context);
     if (deepLink == null || deepLink.isEmpty || !mounted) {
@@ -196,6 +193,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
+    _configService?.removeListener(_handleConfigChanged);
     _hostnameController.dispose();
     _addressController.dispose();
     _portController.dispose();
@@ -487,12 +485,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: isConnected ? null : _scanQrImport,
             icon: const Icon(Icons.qr_code_scanner),
             label: Text(AppLocalizations.of(context)!.settingsImportScanQr),
-          ),
-          const SizedBox(height: 10),
-          OutlinedButton.icon(
-            onPressed: isConnected ? null : _showPasteImportDialog,
-            icon: const Icon(Icons.link),
-            label: Text(AppLocalizations.of(context)!.settingsImportPasteLink),
           ),
         ],
       ),

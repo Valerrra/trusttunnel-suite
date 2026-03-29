@@ -39,6 +39,19 @@
   "homePleaseWait": "Please wait...",
   "homeDisconnect": "Disconnect",
   "homeConnect": "Connect",
+  "homeProfilesTitle": "Profiles",
+  "homeProfileAntiDpi": "Anti-DPI",
+  "homeProfileInsecure": "Insecure",
+  "homeDeleteProfileTitle": "Delete profile?",
+  "homeDeleteProfileMessage": "The profile \"{profileName}\" will be removed from the app.",
+  "@homeDeleteProfileMessage": {
+    "placeholders": {
+      "profileName": {
+        "type": "String"
+      }
+    }
+  },
+  "homeDeleteProfileConfirm": "Delete",
   "homeInfoTitle": "Information",
   "homeInfoLine1": "Configure server settings in the \"Settings\" tab",
   "homeInfoLineClientWindows": "Make sure trusttunnel_client.exe is in the client/ directory",

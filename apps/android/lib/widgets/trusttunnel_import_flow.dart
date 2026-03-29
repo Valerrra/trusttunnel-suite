@@ -71,7 +71,7 @@ class TrustTunnelImportFlow {
       }
 
       final configService = context.read<ConfigService>();
-      await configService.saveConfig(imported);
+      final saved = await configService.saveImportedConfig(imported);
       if (!context.mounted) {
         return null;
       }
@@ -83,7 +83,7 @@ class TrustTunnelImportFlow {
         ),
       );
 
-      return imported;
+      return saved;
     } catch (e) {
       if (!context.mounted) {
         return null;

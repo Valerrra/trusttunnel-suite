@@ -131,6 +131,26 @@ class AppLocalizationsRu extends AppLocalizations {
   String get homeConnect => 'Подключить';
 
   @override
+  String get homeProfilesTitle => 'Профили';
+
+  @override
+  String get homeProfileAntiDpi => 'Anti-DPI';
+
+  @override
+  String get homeProfileInsecure => 'Без проверки';
+
+  @override
+  String get homeDeleteProfileTitle => 'Удалить профиль?';
+
+  @override
+  String homeDeleteProfileMessage(String profileName) {
+    return 'Профиль «$profileName» будет удалён из приложения.';
+  }
+
+  @override
+  String get homeDeleteProfileConfirm => 'Удалить';
+
+  @override
   String get homeInfoTitle => 'Информация';
 
   @override
