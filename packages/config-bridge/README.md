@@ -1,6 +1,6 @@
 # Config Bridge
 
-Единый слой интеграции конфигов между WebUI, desktop и Android.
+Единый слой интеграции конфигов между endpoint export, desktop и Android.
 
 Планируемая ответственность:
 

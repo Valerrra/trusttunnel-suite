@@ -1,102 +1,69 @@
 # TrustTunnel Suite
 
-Monorepo для трёх связанных продуктов вокруг TrustTunnel:
+Клиентский monorepo вокруг [TrustTunnel](https://github.com/TrustTunnel/TrustTunnel).
 
-1. `apps/webui` - серверная WebUI-панель для управления TrustTunnel endpoint.
-2. `apps/desktop` - desktop-клиент на базе `trusty` с быстрым импортом конфигов, QR и русским языком.
-3. `apps/android` - Android-клиент на общей Flutter-основе с упором на быстрый onboarding.
+Проект сфокусирован на клиентских приложениях и shared-слое:
 
-## Текущее состояние
+1. `apps/desktop` — desktop-клиент для Windows/Linux
+2. `apps/android` — Android-клиент
+3. `packages/*` — общий код, bridge и VPN plugin
 
-- `apps/webui`: есть рабочая WebUI-панель с клиентами, QR, `tt://`, dashboard, routing и cascade management
+## Respect and Credits
+
+Этот проект не появился с нуля.
+
+- [TrustTunnel](https://github.com/TrustTunnel/TrustTunnel) — ядро протокола, endpoint, `tt://` deep-link, setup wizard и общая экосистема.
+- [trusty](https://github.com/Meddelin/trusty) от [Meddelin](https://github.com/Meddelin) — исходная база Flutter-клиента, на которой выросли desktop и часть mobile-логики этого репозитория.
+
+`trusttunnel-suite` развивается как самостоятельный репозиторий, но desktop/android часть здесь — это уважительное продолжение и расширение идей `trusty` поверх экосистемы `TrustTunnel`.
+
+## Current State
+
 - `apps/desktop`: есть Linux portable/AppImage, Windows portable и Windows installer
 - `apps/android`: есть рабочий APK с реальным TrustTunnel backend
+- `packages/vpn_plugin`: локальный plugin-слой для Android backend integration
 
-## Зачем отдельный проект
-
-TrustTunnel сам по себе уже даёт сильное ядро протокола и экспорт `tt://` deep-link, но вокруг него пока не хватает:
-
-- удобной админ-панели для управления endpoint и клиентами;
-- desktop-клиента с нормальным импортом конфигов и русской локализацией;
-- Android-клиента с входом через QR/deep-link без ручного ввода;
-- единого UX между сервером и клиентами.
-
-## Структура
+## Repository Layout
 
 ```text
 trusttunnel-suite/
 ├── README.md
 ├── PROJECT_ARCHITECTURE.md
 ├── apps/
-│   ├── webui/
 │   ├── desktop/
 │   └── android/
 ├── packages/
+│   ├── config-bridge/
 │   ├── flutter-core/
-│   └── config-bridge/
+│   └── vpn_plugin/
+├── scripts/
 └── docs/
 ```
 
-## Базовые upstream-источники
+## Scope
 
-- `TrustTunnel/TrustTunnel` - endpoint, setup wizard, экспорт `tt://` deep-link, документация формата.
-- `Meddelin/trusty` - Flutter desktop GUI для TrustTunnel.
+Репозиторий покрывает:
 
-Для `TrustTunnel` и `trusty` текущая интеграционная стратегия проще: использовать их как основу и развивать поверх.
+- импорт `tt://`
+- QR/deep-link onboarding
+- RU/EN локализацию
+- desktop packaging
+- Android VPN backend integration
+- общий формат профилей между платформами
 
-## Целевой MVP
+Серверная панель больше не развивается внутри `trusttunnel-suite`. Клиентская часть и серверная панель теперь разведены по разным репозиториям.
 
-### 1. WebUI
+## Known Linux Note
 
-- логин в панель;
-- статус endpoint, домена, TLS, порта и активных клиентов;
-- CRUD пользователей TrustTunnel;
-- выпуск `tt://` deep-link и QR для клиента;
-- импорт/экспорт endpoint-конфигов и credential store;
-- routing rules, datasets `geoip/geosite`, Zapret profiles;
-- cascade profiles и подготовка к auto-deploy downstream nodes;
-- журнал действий и базовые health checks.
+Linux portable и AppImage содержат `trusttunnel_client`, но для реального VPN на Linux обычно нужен one-time `setcap` на внешний `client/trusttunnel_client`.
 
-### 2. Desktop
+Типовой шаг:
 
-- RU/EN локализация;
-- импорт из `tt://`, QR, буфера обмена и файла;
-- быстрый профиль "подключиться в 1 клик";
-- экран профилей, журналов и split-tunnel;
-- автозагрузка на Windows;
-- автоподключение при старте;
-- запуск свернутым;
-- совместимость с текущим CLI `trusttunnel_client`.
+```bash
+sudo setcap cap_net_admin,cap_net_raw+eip client/trusttunnel_client
+```
 
-### 3. Android
+## Public Upstreams
 
-- открытие `tt://` через intent-filter;
-- сканирование QR;
-- сохранение нескольких профилей;
-- быстрый connect/disconnect;
-- тот же словарь полей и та же логика валидации, что и в desktop.
-
-## Репозиторий
-
-Проект развивается как отдельный monorepo:
-
-- `apps/webui`
-- `apps/desktop`
-- `apps/android`
-- `packages/vpn_plugin`
-- `scripts/`
-- `docs/`
-
-## Артефакты
-
-Актуальные build/run инструкции лежат в [`docs/BUILD_RUNBOOK.md`](./docs/BUILD_RUNBOOK.md).
-
-## Известные ограничения
-
-- Linux AppImage и Linux portable содержат `trusttunnel_client`, но для реального VPN на Linux нужен one-time `setcap` на внешний `client/trusttunnel_client`
-- AppImage при первом запуске выкладывает `client/` рядом с самим `.AppImage`, после чего обычно нужно выполнить:
-  - `sudo setcap cap_net_admin,cap_net_raw+eip client/trusttunnel_client`
-- на Linux с `systemd-resolved` может дополнительно понадобиться:
-  - `sudo resolvectl dns tun0 8.8.8.8`
-  - `sudo resolvectl domain tun0 "~."`
-- детали и заметки по сборке вынесены в `docs/`
+- [TrustTunnel / TrustTunnel](https://github.com/TrustTunnel/TrustTunnel)
+- [Meddelin / trusty](https://github.com/Meddelin/trusty)
